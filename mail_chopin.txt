@@ -1,0 +1,20 @@
+
+Bonsoir,
+je suis désolé, beaucoup de groupes m'ont déjà demandé un sujet en rapport avec l'écologie,
+je me vois obligé de vous attribuer un projet plutôt en rapport avec l'astronomie, mais vous
+verrez c'est très intéressant aussi.
+ 
+voici un article où est présenté un modèle à espace d'état utilisé en astrostatistique:
+www.stat.harvard.edu/Faculty_Content/meng/jcgs.2011-article.pdf
+
+Attention, l'article en lui même n'est pas vraiment intéressant pour ce projet; seul compte
+le descriptif du modèle, à partir duquel vous pourrez essayer les choses suivantes:
+1. construire un filtre particulaire pour calculer la vraisemblance d'un tel modèle (à paramètre theta fixé).
+2. l'utiliser à l'intérieur d'un algorithme PMCMC pour pouvoir simuler selon la loi a posteriori de theta sachant les données.
+En fonction du temps dont vous disposez, vous pouvez aussi:
+3. l'appliquer aux données réelles mentionnées dans l'article.
+4. voir s'il est possible de construire un "guided particle filter" pour ce modèle.
+5. (uniquement si vous êtes TRES motivés) comparer l'algorithme PMCMC avec l'algorithme MCMC proposé dans cet article,
+notamment en terme de performance (variance des estimateurs rapportée aux temps de calcul).
+
+Cdt
