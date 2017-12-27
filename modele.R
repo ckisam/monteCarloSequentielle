@@ -12,7 +12,7 @@ getwd()
 ##################################################
 ##### PARAMETRES DU MODELE
 
-n <- 10000
+n <- 1000
 
 rho <- 0.5
 delta <- 0.2
@@ -39,29 +39,42 @@ genXi <- function(delta, rho, n) {
   return(res)
 }
 
+# ### Version pythonable
+# genPhotonCount <- function(d, beta, delta, rho, n) {
+#   xi <- genXi(delta, rho, n)
+#   res <- c()
+#   for (i in 1:n) {
+#     lambda <- d[i] * exp(beta[1] + (beta[2] * i / n) + xi[i])
+#     y <- rpois(n = 1, lambda = lambda)
+#     res <- append(res, y)
+#   }
+#   return(res)
+# }
+
 genPhotonCount <- function(d, beta, delta, rho, n) {
   xi <- genXi(delta, rho, n)
-  res <- c()
-  for (i in 1:n) {
+  res <- sapply(1:n, function(i) {
     lambda <- d[i] * exp(beta[1] + (beta[2] * i / n) + xi[i])
     y <- rpois(n = 1, lambda = lambda)
-    res <- append(res, y)
-  }
+    return(y)
+  })
   return(res)
 }
 
 ##################################################
 ##### TESTS
 
-### Generation du processus 'Xi'
-
-simulXi <- genXi(delta, rho, n)
-
-plot(simulXi,
-     main = "Processus 'Xi' (latent) auto-régressif stationnaire",
-     xlab = "Temps t",
-     ylab = "Valeur de Xi observée")
-
-simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
-
-plot(simulPhotoCount)
+# ### Generation du processus 'Xi'
+#
+# simulXi <- genXi(delta, rho, n)
+#
+# plot(simulXi,
+#      main = "Processus 'Xi' (latent) auto-régressif stationnaire",
+#      xlab = "Temps t",
+#      ylab = "Valeur de Xi observée")
+#
+# ### Generation du processus de comptage de photons
+#
+# simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
+#
+# plot(simulPhotoCount)
