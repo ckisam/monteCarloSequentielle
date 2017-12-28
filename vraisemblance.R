@@ -76,14 +76,14 @@ likelihoodBootstrapParticleFilter <-
 ##################################################
 ##### TESTS
 
-### Generation du processus de comptage de photons
-
-simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
-plot(simulPhotoCount)
-
-### Estimation de la vraisemblance
-
-likelihoodPhotonCount <- sapply(1:10, function(i) {
-  return(likelihoodBootstrapParticleFilter(d, beta, delta, rho, simulPhotoCount, N))
-})
-likelihoodPhotonCount
+# ### Generation du processus de comptage de photons
+#
+# simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
+# plot(simulPhotoCount)
+#
+# ### Estimation de la vraisemblance
+#
+# likelihoodPhotonCount <- sapply(1:10, function(i) {
+#   return(likelihoodBootstrapParticleFilter(d, beta, delta, rho, simulPhotoCount, N))
+# })
+# likelihoodPhotonCount
