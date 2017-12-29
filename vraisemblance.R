@@ -51,9 +51,13 @@ likelihoodBootstrapParticleFilter <-
     ## Etapes suivantes
     for (i in 2:length(Y)) {
       # Mutation
-      xiGen <- rnorm(n = N,
-                     mean = 0,
-                     sd = (delta / sqrt(1 - rho ^ 2)))
+      xiGen <- sapply(1:N, function(j) {
+        return(rnorm(
+          n = 1,
+          mean = rho * xiSel[j],
+          sd = delta
+        ))
+      })
       # Ponderation
       w <- sapply(1:N, function(i) {
         lambda <- d[1] * exp(beta[1] + (beta[2] / n) + xiGen[i])

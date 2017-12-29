@@ -64,17 +64,17 @@ genPhotonCount <- function(d, beta, delta, rho, n) {
 ##################################################
 ##### TESTS
 
-# ### Generation du processus 'Xi'
-#
-# simulXi <- genXi(delta, rho, n)
-#
-# plot(simulXi,
-#      main = "Processus 'Xi' (latent) auto-régressif stationnaire",
-#      xlab = "Temps t",
-#      ylab = "Valeur de Xi observée")
-#
-# ### Generation du processus de comptage de photons
-#
-# simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
-#
-# plot(simulPhotoCount)
+### Generation du processus 'Xi'
+
+simulXi <- genXi(delta, rho, n)
+
+plot(simulXi,
+     main = "Processus 'Xi' (latent) auto-régressif stationnaire",
+     xlab = "Temps t",
+     ylab = "Valeur de Xi observée")
+
+### Generation du processus de comptage de photons
+
+simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
+
+plot(simulPhotoCount)
