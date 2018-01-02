@@ -15,6 +15,7 @@ source("vraisemblance.R")
 
 n <- 100
 N <- 100
+nb <- 100
 
 rho <- 0.5
 delta <- 0.2
@@ -26,29 +27,85 @@ d <- rep(12, n)
 ##################################################
 ##### FONCTIONS DU PROBLEME
 
+getThetaNameList <- function() {
+  return(c("beta1", "beta2", "delta", "rho"))
+}
+
 genNormMultivariate <- function(theta) {
   require(mvtnorm)
-  n <- length(theta)
-  res <-
-    rmvnorm(n = 1,
-            mean = theta,
-            sigma = diag(x = 1, nrow = n, ncol = n))
+  thetaNameList <- getThetaNameList()
+  thetaDim <- length(thetaNameList)
+  thetaVect <- sapply(thetaNameList, function(name) {
+    return(theta[[name]])
+  })
+  gen <-
+    rmvnorm(
+      n = 1,
+      mean = thetaVect,
+      sigma = diag(x = 1, nrow = thetaDim, ncol = thetaDim)
+    )
+  res <- list()
+  for (i in 1:thetaDim) {
+    res[[thetaNameList[i]]] <- gen[i]
+  }
   return(res)
+}
+
+densityNormMultivariate <- function(theta, mean) {
+  require(mvtnorm)
+  thetaNameList <- getThetaNameList()
+  thetaDim <- length(thetaNameList)
+  thetaVect <- sapply(thetaNameList, function(name) {
+    return(theta[[name]])
+  })
+  meanVect <- sapply(thetaNameList, function(name) {
+    return(mean[[name]])
+  })
+  res <-
+    dmvnorm(
+      x = thetaVect,
+      mean = meanVect,
+      sigma = diag(x = 1, nrow = thetaDim, ncol = thetaDim)
+    )
+  return(res)
+}
+
+estimateLikelyhood <- function(d, theta, Y, N) {
+  return(likelihoodBootstrapParticleFilter(d, c(theta$beta1, theta$beta2), theta$delta, theta$rho, Y, N))
 }
 
 genThetaPosterior <- function(theta0, d, Y, N, nb) {
   require(mvtnorm)
+  res <- list()
   theta <- theta0
-  beta1 <- c(theta$beta1)
-  beta2 <- c(theta$beta2)
-  delta <- c(theta$delta)
-  rho <- c(theta$rho)
-  objLkh <-
-    likelihoodBootstrapParticleFilter(d, c(beta1[1], beta2[1]), delta[1], rho[1], Y, N)
+  thetaLkh <-
+    estimateLikelyhood(d, theta, Y, N)
   for (i in 1:nb) {
     newTheta <- genNormMultivariate(theta)
-    propLkh <- dmvnorm(,sigma = diag(x = 1, nrow = 4, ncol = 4))
+    newThetaLkh <- estimateLikelyhood(d, newTheta, Y, N)
+    lkhRatio <-
+      (newThetaLkh * densityNormMultivariate(theta, newTheta)) / (thetaLkh *
+                                                                    densityNormMultivariate(newTheta, theta))
+    proba <- min(lkhRatio, 1)
+    if (rbinom(1, 1, proba) == 1) {
+      theta <- newTheta
+      thetaLkh <- newThetaLkh
+    }
+    res[[i]] <- theta
   }
+  return(res)
+}
+
+formatResThetaPosterior <- function(rawRes) {
+  res <- list()
+  n <- length(rawRes)
+  thetaNameList <- getThetaNameList
+  for (name in thetaNameList) {
+    res[[name]] <- sapply(1:n, function(i) {
+      return(rawRes[[i]][[name]])
+    })
+  }
+  return(res)
 }
 
 ##################################################
@@ -57,14 +114,14 @@ genThetaPosterior <- function(theta0, d, Y, N, nb) {
 ### Generation du processus de comptage de photons
 
 simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
-# plot(simulPhotoCount)
 
-### Estimation de la vraisemblance
+### Simulation de theta a posteriori
 
-likelihoodPhotonCount <- sapply(1:10, function(i) {
-  return(likelihoodBootstrapParticleFilter(d, beta, delta, rho, simulPhotoCount, N))
-})
-likelihoodPhotonCount
+# genThetaPosterior <- function(theta0, d, Y, N, nb) {
 
-### Generation d'une normale multivariee
-genNormMultivariate(rep(0, 5))
+theta0 <- list()
+theta0$beta1 <- beta1
+theta0$beta2 <- beta2
+theta0$delta <- delta
+theta0$rho <- rho
+simulTheta <- genThetaPosterior(theta0, d, simulPhotoCount, N, nb)
