@@ -10,18 +10,6 @@ setwd(wd)
 getwd()
 
 ##################################################
-##### PARAMETRES DU MODELE
-
-n <- 1000
-
-rho <- 0.5
-delta <- 0.2
-beta1 <- 0
-beta2 <- 0
-beta <- c(beta1, beta2)
-d <- rep(12, n)
-
-##################################################
 ##### FONCTIONS DU MODELE
 
 ### Engendre le processus latent auto-regressif stationnaire Xi
@@ -60,21 +48,3 @@ genPhotonCount <- function(d, beta, delta, rho, n) {
   })
   return(res)
 }
-
-##################################################
-##### TESTS
-
-### Generation du processus 'Xi'
-
-simulXi <- genXi(delta, rho, n)
-
-plot(simulXi,
-     main = "Processus 'Xi' (latent) auto-régressif stationnaire",
-     xlab = "Temps t",
-     ylab = "Valeur de Xi observée")
-
-### Generation du processus de comptage de photons
-
-simulPhotoCount <- genPhotonCount(d, beta, delta, rho, n)
-
-plot(simulPhotoCount)
