@@ -9,14 +9,14 @@ rm(list = ls())
 wd <- "C:/Users/Samuel/Documents/ENSAE - HMM/monteCarloSequentielle"
 setwd(wd)
 getwd()
-source("inferenceBayesienne.R")
+source("inferenceBayesienneComponentWise.R")
 
 ##################################################
 ##### PARAMETRES DU MODELE
 
 n <- 100
 N <- 100
-nb <- 100
+nb <- 1000
 
 rho <- 0.5
 delta <- 0.2
@@ -41,6 +41,7 @@ theta0$beta1 <- beta1
 theta0$beta2 <- beta2
 theta0$delta <- delta
 theta0$rho <- rho
+
 simulTheta <-
   genThetaPosterior(theta0,
                     d,
@@ -53,7 +54,44 @@ plot(
   simulTheta.format$beta2,
   type = "l",
   col = "navy",
-  main = "Valeur de beta2 au cours des itÃ©rations",
-  xlab = "ItÃ©ration",
+  main = "Valeur de beta2 au cours des itérations",
+  xlab = "Itération",
+  ylab = "beta2"
+)
+
+### Avec des log-densités
+simulThetaLog <-
+  genThetaPosteriorByLog(theta0,
+                         d,
+                         simulPhotoCount,
+                         N,
+                         nb,
+                         genNewProposalSimpleIidByLog)
+simulThetaLog.format <- formatResThetaPosterior(simulThetaLog)
+plot(
+  simulThetaLog.format$beta2,
+  type = "l",
+  col = "navy",
+  main = "Valeur de beta2 au cours des itérations",
+  xlab = "Itération",
+  ylab = "beta2"
+)
+
+### Avec proposal independant
+
+simulThetaIndep <-
+  genThetaPosterior(theta0,
+                    d,
+                    simulPhotoCount,
+                    N,
+                    nb,
+                    genNewProposalSimpleIidIndep)
+simulThetaIndep.format <- formatResThetaPosterior(simulThetaIndep)
+plot(
+  simulThetaIndep.format$beta2,
+  type = "l",
+  col = "navy",
+  main = "Valeur de beta2 au cours des itérations",
+  xlab = "Itération",
   ylab = "beta2"
 )

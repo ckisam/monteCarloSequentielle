@@ -31,9 +31,9 @@ d <- rep(12, n)
 simulXi <- genXi(delta, rho, n)
 
 plot(simulXi,
-     main = "Processus 'Xi' (latent) auto-rÃ©gressif stationnaire",
+     main = "Processus 'Xi' (latent) auto-régressif stationnaire",
      xlab = "Temps t",
-     ylab = "Valeur de Xi observÃ©e")
+     ylab = "Valeur de Xi observée")
 
 ### Generation du processus de comptage de photons
 

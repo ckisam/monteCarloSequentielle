@@ -63,3 +63,54 @@ likelihoodBootstrapParticleFilter <-
     }
     return(likelihood)
   }
+
+logLikelihoodBootstrapParticleFilter <-
+  function(d, beta, delta, rho, Y, N) {
+    ## Premiere etape
+    #Initialisation
+    xiGen <- rnorm(n = N,
+                   mean = 0,
+                   sd = (delta / sqrt(1 - rho ^ 2)))
+    # Ponderation
+    w <- sapply(1:N, function(i) {
+      lambda <- d[1] * exp(beta[1] + (beta[2] / n) + xiGen[i])
+      lkh <- dpois(x = Y[i], lambda = lambda)
+      return(lkh)
+    })
+    W <- w / sum(w)
+    logLikelihood <- log(mean(w))
+    # Selection
+    xiSel <- sample(
+      x = xiGen,
+      size = N,
+      replace = TRUE,
+      prob = W
+    )
+    ## Etapes suivantes
+    for (i in 2:length(Y)) {
+      # Mutation
+      xiGen <- sapply(1:N, function(j) {
+        return(rnorm(
+          n = 1,
+          mean = rho * xiSel[j],
+          sd = delta
+        ))
+      })
+      # Ponderation
+      w <- sapply(1:N, function(i) {
+        lambda <- d[1] * exp(beta[1] + (beta[2] / n) + xiGen[i])
+        lkh <- dpois(x = Y[i], lambda = lambda)
+        return(lkh)
+      })
+      W <- w / sum(w)
+      logLikelihood <- logLikelihood + log(mean(w))
+      # Selection
+      xiSel <- sample(
+        x = xiGen,
+        size = N,
+        replace = TRUE,
+        prob = W
+      )
+    }
+    return(logLikelihood)
+  }
