@@ -9,6 +9,8 @@ wd <- "C:/Users/Samuel/Documents/ENSAE - HMM/monteCarloSequentielle"
 setwd(wd)
 getwd()
 
+library(truncnorm)
+
 ##################################################
 ##### FONCTIONS UTILITAIRES
 
@@ -19,6 +21,56 @@ weighted.sd <- function(x, w) {
   return(sqrt(sum(w * (x - mean(
     x
   )) ^ 2) / (length(x) - 1)))
+}
+
+getThetaNameList <- function() {
+  return(c("beta1", "beta2", "delta", "rho"))
+}
+
+### Fonctions de log
+
+getStart <- function(text) {
+  return(as.numeric(Sys.time()))
+}
+
+logStart <- function(text) {
+  print("##################################################")
+  print(paste("#####   ", text, sep = ""))
+  print("##################################################")
+}
+
+formatIntTime <- function(i, l) {
+  res <- as.character(i)
+  remain <- l - nchar(res)
+  res <-
+    paste(paste(rep("0", remain), collapse = ""), res, sep = "")
+  return(res)
+}
+
+formatSpendTime <- function(spend) {
+  seconds <- as.integer(spend)
+  milliseconds <- formatIntTime(as.integer(1000 * (spend %% 1)), 3)
+  minutes <- seconds %/% 60
+  seconds <- formatIntTime(seconds %% 60, 2)
+  hours <- formatIntTime(minutes %/% 60, 2)
+  minutes <- formatIntTime(minutes %% 60, 2)
+  res <-
+    paste(hours, "h", minutes, "m", seconds, ".", milliseconds, "s", sep = "")
+  return(res)
+}
+
+logWithTime <- function(start, text) {
+  current <- getStart()
+  spend <- current - start
+  print(paste("(", formatSpendTime(spend), ") - ", text, sep = ""))
+}
+
+logTotalTime <- function(start) {
+  end <- getStart()
+  spend <- end - start
+  print("##################################################")
+  print(paste("#####   Temps écoulé : ", formatSpendTime(spend), sep = ""))
+  print("##################################################")
 }
 
 ##################################################
@@ -248,3 +300,102 @@ likelihoodBootstrapParticleFilter <-
       return(likelihood)
     }
   }
+
+##################################################
+##### ECHANTILLONNAGE PMCMC
+
+genSimpleIid <- function(theta) {
+  require(truncnorm)
+  res <- list()
+  res$beta1 <- rnorm(1, mean = theta$beta1)
+  res$beta2 <- rnorm(1, mean = theta$beta2)
+  res$delta <- rtruncnorm(1, a = 0, mean = theta$delta)
+  res$rho <- rtruncnorm(1,
+                        a = -.99,
+                        b = .99,
+                        mean = theta$rho)
+  return(res)
+}
+
+densitySimpleIid <- function(theta, ancestor, log = FALSE) {
+  require(truncnorm)
+  res <- list()
+  res$beta1 <- dnorm(theta$beta1, mean = ancestor$beta1, log = log)
+  res$beta2 <- dnorm(theta$beta2, mean = ancestor$beta2)
+  res$delta <-
+    dtruncnorm(theta$delta, a = 0, mean = ancestor$delta)
+  if (log) {
+    res$delta <- log(res$delta)
+  }
+  res$rho <- dtruncnorm(theta$rho,
+                        a = -.99,
+                        b = .99,
+                        mean = ancestor$rho)
+  if (log) {
+    res$rho <- log(res$rho)
+  }
+  return(res)
+}
+
+genNewProposalSimpleIid <- function(theta) {
+  res <- list()
+  res$value <- genSimpleIid(theta)
+  res$density <- densitySimpleIid(res$value, theta)
+  res$densityInv <- densitySimpleIid(theta, res$value)
+  return(res)
+}
+
+genThetaPosterior <-
+  function(theta0,
+           d,
+           Y,
+           N,
+           nb,
+           estimateLikelihood = likelihoodBootstrapParticleFilter,
+           log = FALSE,
+           algoResample = noResampling,
+           genNewProposal = genNewProposalSimpleIid) {
+    res <- list()
+    start <- getStart()
+    logStart("Generation d'un echantillon PMCMC de theta")
+    pct <- nb %/% 10
+    thetaNameList <- getThetaNameList()
+    theta <- theta0
+    thetaLkh <-
+      estimateLikelihood(d, theta, Y, N, log, algoResample)
+    for (i in 1:nb) {
+      proposal <- genNewProposal(theta)
+      for (name in thetaNameList) {
+        newTheta <- theta
+        newTheta[[name]] <- proposal$value[[name]]
+        newThetaLkh <-
+          estimateLikelihood(d, newTheta, Y, N, log, algoResample)
+        lkhRatio <-
+          (newThetaLkh * proposal$densityInv[[name]] / (thetaLkh * proposal$density[[name]]))
+        proba <- min(lkhRatio, 1)
+        # print(proba)
+        if (rbinom(1, 1, proba) == 1) {
+          theta <- newTheta
+          thetaLkh <- newThetaLkh
+        }
+      }
+      res[[i]] <- theta
+      if (i %% pct == 0) {
+        logWithTime(start, paste((i / pct) * 10, "% généré", sep = ""))
+      }
+    }
+    logTotalTime(start)
+    return(res)
+  }
+
+formatResThetaPosterior <- function(rawRes) {
+  res <- list()
+  n <- length(rawRes)
+  thetaNameList <- getThetaNameList()
+  for (name in thetaNameList) {
+    res[[name]] <- sapply(1:n, function(i) {
+      return(rawRes[[i]][[name]])
+    })
+  }
+  return(res)
+}

@@ -51,17 +51,24 @@ lkh <- likelihoodBootstrapParticleFilter(d, theta, simulY, N)
 resLkh100 <-
   likelihoodBootstrapParticleFilter(d, theta, simulY, 100, exportXi = 100)
 
-plot(
-  resLkh100$xi$mean,
-  main = "Processus Xi estimé",
-  xlab = "Temps t",
-  ylab = "Xi",
-  # ylim = c(
-  #   min(resLkh100$xi$mean, simulXi),
-  #   max(resLkh100$xi$mean, simulXi)
-  # )
-)
-#lines(simulXi)
-lines(resLkh100$xi$mean-(qt(.975,df=n)*resLkh100$xi$sd/sqrt(n)),col="red")
-lines(resLkh100$xi$mean+(qt(.975,df=n)*resLkh100$xi$sd/sqrt(n)),col="red")
-      
+plot(resLkh100$xi$mean,
+     main = "Processus Xi estimé",
+     xlab = "Temps t",
+     ylab = "Xi")
+# lines(simulXi)
+lines(resLkh100$xi$mean - (qt(.975, df = n) * resLkh100$xi$sd / sqrt(n)), col =
+        "red")
+lines(resLkh100$xi$mean + (qt(.975, df = n) * resLkh100$xi$sd / sqrt(n)), col =
+        "red")
+
+##################################################
+##### ECHANTILLONNAGE DE THETA PAR PMCMC
+
+simulTheta <- genThetaPosterior(theta, d, simulY, 100, 2000)
+simulTheta <- formatResThetaPosterior(simulTheta)
+par(mfrow = c(2, 2))
+plot(simulTheta$beta1[1000:2000], type = "l")
+plot(simulTheta$beta2[1000:2000], type = "l")
+plot(simulTheta$delta[1000:2000], type = "l")
+plot(simulTheta$rho[1000:2000], type = "l")
+par(mfrow = c(1, 1))
