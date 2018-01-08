@@ -16,8 +16,6 @@ library(truncnorm)
 
 ### Calcule un ecart-type pondere
 weighted.sd <- function(x, w) {
-  print(min((x - mean(x)) ^ 2))
-  print(max((x - mean(x)) ^ 2))
   return(sqrt(sum(w * (x - mean(
     x
   )) ^ 2) / (length(x) - 1)))
@@ -164,7 +162,7 @@ residualResampling <- function(xi, weights) {
   N <- length(xi)
   w <- weights
   if (sum(w) != 1) {
-    w <- sum(w)
+    w <- w / sum(w)
   }
   
   ## On affecte des copies des particules
@@ -237,9 +235,9 @@ likelihoodBootstrapParticleFilter <-
                    mean = 0,
                    sd = (delta / sqrt(1 - rho ^ 2)))
     # -2- Ponderation
-    w <- sapply(1:N, function(i) {
-      lambda <- d[1] * exp(beta1 + (beta2 / n) + xiGen[i])
-      lkh <- dpois(x = Y[i], lambda = lambda)
+    w <- sapply(1:N, function(j) {
+      lambda <- d[1] * exp(beta1 + (beta2 / n) + xiGen[j])
+      lkh <- dpois(x = Y[1], lambda = lambda)
       return(lkh)
     })
     W <- w / sum(w)
@@ -270,8 +268,8 @@ likelihoodBootstrapParticleFilter <-
         ))
       })
       # -2- Ponderation
-      w <- sapply(1:N, function(i) {
-        lambda <- d[1] * exp(beta1 + (beta2 / n) + xiGen[i])
+      w <- sapply(1:N, function(j) {
+        lambda <- d[1] * exp(beta1 + (beta2 / n) + xiGen[j])
         lkh <- dpois(x = Y[i], lambda = lambda)
         return(lkh)
       })
@@ -303,6 +301,8 @@ likelihoodBootstrapParticleFilter <-
 
 ##################################################
 ##### ECHANTILLONNAGE PMCMC
+
+### Proposal independante et autocorrelee
 
 genSimpleIid <- function(theta) {
   require(truncnorm)
@@ -342,6 +342,49 @@ genNewProposalSimpleIid <- function(theta) {
   res$value <- genSimpleIid(theta)
   res$density <- densitySimpleIid(res$value, theta)
   res$densityInv <- densitySimpleIid(theta, res$value)
+  return(res)
+}
+
+### Proposal independante non autocorrelee
+
+genSimpleIidIndep <- function(theta) {
+  require(truncnorm)
+  res <- list()
+  res$beta1 <- rnorm(1, mean = 0)
+  res$beta2 <- rnorm(1, mean = 0)
+  res$delta <- rtruncnorm(1, a = 0, mean = 0)
+  res$rho <- rtruncnorm(1,
+                        a = -.99,
+                        b = .99,
+                        mean = 0)
+  return(res)
+}
+
+densitySimpleIidIndep <- function(theta, log = FALSE) {
+  require(truncnorm)
+  res <- list()
+  res$beta1 <- dnorm(theta$beta1, mean = 0, log = log)
+  res$beta2 <- dnorm(theta$beta2, mean = 0)
+  res$delta <-
+    dtruncnorm(theta$delta, a = 0, mean = 0)
+  if (log) {
+    res$delta <- log(res$delta)
+  }
+  res$rho <- dtruncnorm(theta$rho,
+                        a = -.99,
+                        b = .99,
+                        mean = 0)
+  if (log) {
+    res$rho <- log(res$rho)
+  }
+  return(res)
+}
+
+genNewProposalSimpleIidIndep <- function(theta) {
+  res <- list()
+  res$value <- genSimpleIidIndep(theta)
+  res$density <- densitySimpleIidIndep(res$value)
+  res$densityInv <- densitySimpleIidIndep(theta)
   return(res)
 }
 

@@ -45,30 +45,121 @@ plot(simulY,
 ##### FILTRAGE PARTICULAIRE - CALCUL DE LA VRAISEMBLANCE
 
 N <- 100
-lkh <- likelihoodBootstrapParticleFilter(d, theta, simulY, N)
 
-### Comportement des particules
 resLkh100 <-
-  likelihoodBootstrapParticleFilter(d, theta, simulY, 100, exportXi = 100)
+  likelihoodBootstrapParticleFilter(d, theta, simulY, N, exportXi = TRUE)
 
-plot(resLkh100$xi$mean,
-     main = "Processus Xi estimé",
-     xlab = "Temps t",
-     ylab = "Xi")
-# lines(simulXi)
-lines(resLkh100$xi$mean - (qt(.975, df = n) * resLkh100$xi$sd / sqrt(n)), col =
-        "red")
-lines(resLkh100$xi$mean + (qt(.975, df = n) * resLkh100$xi$sd / sqrt(n)), col =
-        "red")
+plotPartAndCi <- function(resLkhFun, nbPart) {
+  plot(resLkhFun$xi$mean,
+       main = "Processus Xi estimé",
+       xlab = "Temps t",
+       ylab = "Xi")
+  lines(simulXi)
+  lines(resLkhFun$xi$mean - (qt(.975, df = nbPart) * resLkhFun$xi$sd / sqrt(nbPart)), col =
+          "red")
+  lines(resLkhFun$xi$mean + (qt(.975, df = nbPart) * resLkhFun$xi$sd / sqrt(nbPart)), col =
+          "red")
+}
+
+plotPartAndCi(resLkh100, N)
+
+# Avec reechantillonnage residuel
+resLkhRes100 <-
+  likelihoodBootstrapParticleFilter(d,
+                                    theta,
+                                    simulY,
+                                    N,
+                                    algoResample = residualResampling,
+                                    exportXi = TRUE)
+
+plotPartAndCi(resLkhRes100, N)
+
+N <- 1000
+
+resLkh1000 <-
+  likelihoodBootstrapParticleFilter(d, theta, simulY, N, exportXi = TRUE)
+
+plotPartAndCi(resLkh1000, N)
+
+# Avec reechantillonnage residuel
+resLkhRes1000 <-
+  likelihoodBootstrapParticleFilter(d,
+                                    theta,
+                                    simulY,
+                                    N,
+                                    algoResample = residualResampling,
+                                    exportXi = TRUE)
+
+plotPartAndCi(resLkhRes1000, N)
 
 ##################################################
 ##### ECHANTILLONNAGE DE THETA PAR PMCMC
 
-simulTheta <- genThetaPosterior(theta, d, simulY, 100, 2000)
-simulTheta <- formatResThetaPosterior(simulTheta)
+burnin <- 1000
+pmcmcSize <- 2000
+
+simulThetaIid <- genThetaPosterior(theta, d, simulY, 200, pmcmcSize)
+simulThetaIid <- formatResThetaPosterior(simulThetaIid)
 par(mfrow = c(2, 2))
-plot(simulTheta$beta1[1000:2000], type = "l")
-plot(simulTheta$beta2[1000:2000], type = "l")
-plot(simulTheta$delta[1000:2000], type = "l")
-plot(simulTheta$rho[1000:2000], type = "l")
+for (param in getThetaNameList()) {
+  plot(
+    simulThetaIid[[param]][burnin:pmcmcSize],
+    type = "l",
+    main = param,
+    xlab = "Itération",
+    ylab = param
+  )
+}
+par(mfrow = c(1, 1))
+
+simulThetaIidRes <-
+  genThetaPosterior(theta, d, simulY, 200, pmcmcSize, algoResample = residualResampling)
+simulThetaIidRes <- formatResThetaPosterior(simulThetaIidRes)
+par(mfrow = c(2, 2))
+for (param in getThetaNameList()) {
+  plot(
+    simulThetaIidRes[[param]][burnin:pmcmcSize],
+    type = "l",
+    main = param,
+    xlab = "Itération",
+    ylab = param
+  )
+}
+par(mfrow = c(1, 1))
+
+simulThetaIidIndep <-
+  genThetaPosterior(theta, d, simulY, 200, pmcmcSize, genNewProposal = genNewProposalSimpleIidIndep)
+simulThetaIidIndep <- formatResThetaPosterior(simulThetaIidIndep)
+par(mfrow = c(2, 2))
+for (param in getThetaNameList()) {
+  plot(
+    simulThetaIidIndep[[param]][burnin:pmcmcSize],
+    type = "l",
+    main = param,
+    xlab = "Itération",
+    ylab = param
+  )
+}
+par(mfrow = c(1, 1))
+
+simulThetaIidResIndep <-
+  genThetaPosterior(theta,
+                    d,
+                    simulY,
+                    200,
+                    pmcmcSize,
+                    algoResample = residualResampling,
+                    genNewProposal = genNewProposalSimpleIidIndep)
+simulThetaIidResIndep <-
+  formatResThetaPosterior(simulThetaIidResIndep)
+par(mfrow = c(2, 2))
+for (param in getThetaNameList()) {
+  plot(
+    simulThetaIidResIndep[[param]][burnin:pmcmcSize],
+    type = "l",
+    main = param,
+    xlab = "Itération",
+    ylab = param
+  )
+}
 par(mfrow = c(1, 1))
