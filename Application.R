@@ -97,8 +97,9 @@ plotPartAndCi(resLkhRes1000, N)
 
 burnin <- 1000
 pmcmcSize <- 2000
+N <- 100
 
-simulThetaIid <- genThetaPosterior(theta, d, simulY, 200, pmcmcSize)
+simulThetaIid <- genThetaPosterior(theta, d, simulY, N, pmcmcSize)
 simulThetaIid <- formatResThetaPosterior(simulThetaIid)
 par(mfrow = c(2, 2))
 for (param in getThetaNameList()) {
@@ -113,7 +114,7 @@ for (param in getThetaNameList()) {
 par(mfrow = c(1, 1))
 
 simulThetaIidRes <-
-  genThetaPosterior(theta, d, simulY, 200, pmcmcSize, algoResample = residualResampling)
+  genThetaPosterior(theta, d, simulY, N, pmcmcSize, algoResample = residualResampling)
 simulThetaIidRes <- formatResThetaPosterior(simulThetaIidRes)
 par(mfrow = c(2, 2))
 for (param in getThetaNameList()) {
@@ -128,7 +129,7 @@ for (param in getThetaNameList()) {
 par(mfrow = c(1, 1))
 
 simulThetaIidIndep <-
-  genThetaPosterior(theta, d, simulY, 200, pmcmcSize, genNewProposal = genNewProposalSimpleIidIndep)
+  genThetaPosterior(theta, d, simulY, N, pmcmcSize, genNewProposal = genNewProposalSimpleIidIndep)
 simulThetaIidIndep <- formatResThetaPosterior(simulThetaIidIndep)
 par(mfrow = c(2, 2))
 for (param in getThetaNameList()) {
@@ -146,7 +147,7 @@ simulThetaIidResIndep <-
   genThetaPosterior(theta,
                     d,
                     simulY,
-                    200,
+                    N,
                     pmcmcSize,
                     algoResample = residualResampling,
                     genNewProposal = genNewProposalSimpleIidIndep)
