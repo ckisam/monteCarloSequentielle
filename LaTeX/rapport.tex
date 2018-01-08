@@ -1,0 +1,95 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+ 
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{enumitem}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{here}
+
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\lstset{
+language=R,
+basicstyle=\scriptsize\ttfamily,
+commentstyle=\ttfamily\color{mygreen},
+numbers=left,
+numberstyle=\ttfamily\color{gray}\footnotesize,
+stepnumber=1,
+numbersep=5pt,
+backgroundcolor=\color{white},
+showspaces=false,
+showstringspaces=false,
+showtabs=false,
+frame=single,
+tabsize=2,
+captionpos=b,
+breaklines=true,
+breakatwhitespace=false,
+title=\lstname,
+escapeinside={},
+keywordstyle=\color{blue},
+morekeywords={}
+}
+ 
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\deriv}{\mathrm{d}}
+
+\addto\captionsfrench{%
+  \renewcommand{\figurename}{Graphique}%
+}
+
+\title{ENSAE - 3A
+\\ Chaînes de Markov cachées et méthodes de Monte Carlo séquentielles
+\\ Application à l'astrophysique}
+\author{Bruno ABILOU - Anouar BARCHID - Samuel GIVOIS 
+    \\ Enseignant : M. Nicolas CHOPIN}
+\date{13 janvier 2017}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% DEBUT DU DOCUMENT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% 1 - Description du modele
+\section{Description du modèle}
+
+Ce travail repose sur un modèle proposé par Yu et Meng en 2011 \cite{yu2011center}. Dans cet article, les auteurs proposent une stratégie améliorer l'efficacité d'algorithmes de Monte-Carlo par chaînes de Markov (MCMC). Ils l'appliquent notamment à un modèle hiérarchique bayésien du nombre de photons.
+
+Le modèle est défini par quatre paramètres : $\beta$ (de dimension 2), $\delta$ et $\rho$. Ceux-ci caractérisent la loi supposée du nombre de photons observé au cours du temps $Y_t$, qui dépend aussi d'un processus auto-régressif stationnaire latent $\xi_t$. Formellement, le modèle est le suivant :
+\[
+\begin{array}{c}
+Y_t | (\xi_t, \beta) \sim \mathcal{P}(d_t e^{X_t \beta + \xi_t}) \\
+\xi_t | (\xi_1, ..., \xi_{t-1}, \rho, \delta) \sim \mathcal{N}(\rho\xi_{t-1}, \delta^2) \ \ \ (t>1) \\
+\xi_1 \sim \mathcal{N}(0, \frac{\delta^2}{1-\rho^2})
+\end{array}
+\]
+où $d_t$ est une suite connue, et $X_t$ correspond au couple $(1, \frac{t}{T})$.
+
+Pour les auteurs, la question d'intérêt sur ce modèle est celle de savoir si le nombre dépend du temps écoulé, \textit{i.e} déterminer si la deuxième composante de $\beta$ est différente de $0$. Ils proposent pour se faire une estimation bayésienne du paramètre $\theta = (\beta, \delta, \rho)$. Celle-ci est fondée sur un échantillonnage selon la loi a posteriori de $\theta$ sachant les données, pour une loi a priori constante $p(\beta, \delta, \rho) \propto 1$. Leur solution repose sur des MCMC, et consiste en une amélioration du \og standard Gibbs sampler\fg. 
+
+On note $l(y_1, ..., y_t | \theta)$ la vraisemblance du modèle et $q$ la densité de $\theta$ sachant les données observées. D'après la formule de Bayes, on a :
+\[
+q(\theta | y_1, ..., y_t) = \frac{l(y_1, ..., y_t | \theta)p(\theta)}{p(y_1, ..., y_t)}
+\]
+Pour échantillonner selon la loi a posteriori de $\theta$, il est donc nécessaire de savoir calculer la vraisemblance du modèle (au moins à une constante près). Or, ce n'est pas possible ici car cette vraisemblance dépend du processus $(\xi_t)$ qui n'est pas observable. On va donc chercher à contourner cette difficulté en utilisant des filtres particulaires et des algorithmes PMCMC (\cite{andrieu2010particle} et \cite{holenstein2009particle}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% * - Bibliographie
+\renewcommand\bibname{Références}
+\nocite{*}
+\bibliographystyle{plain}
+\bibliography{biblio}
+
+\end{document}
