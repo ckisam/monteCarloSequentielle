@@ -164,3 +164,9 @@ for (param in getThetaNameList()) {
   )
 }
 par(mfrow = c(1, 1))
+
+for (param in getThetaNameList()) {
+  print(param)
+  print(mean(simulThetaIidResIndep[[param]]))
+  print(mean(simulThetaIidResIndep[[param]][burnin:pmcmcSize]))
+}
