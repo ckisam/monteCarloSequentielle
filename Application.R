@@ -44,7 +44,7 @@ plot(simulY,
 ##################################################
 ##### FILTRAGE PARTICULAIRE - CALCUL DE LA VRAISEMBLANCE
 
-N <- 100
+N <- 10
 
 resLkh100 <-
   likelihoodBootstrapParticleFilter(d, theta, simulY, N, exportXi = TRUE)
@@ -74,7 +74,7 @@ resLkhRes100 <-
 
 plotPartAndCi(resLkhRes100, N)
 
-N <- 1000
+N <- 50
 
 resLkh1000 <-
   likelihoodBootstrapParticleFilter(d, theta, simulY, N, exportXi = TRUE)
@@ -92,26 +92,174 @@ resLkhRes1000 <-
 
 plotPartAndCi(resLkhRes1000, N)
 
+### Nombre optimal de particules
+
+drawOptimal <- FALSE
+
+if (drawOptimal) {
+  essByParticles <-
+    function(d, theta, n, testZone, algoResample = noResampling) {
+      start <- getStart()
+      logStart(paste("Optimisation de l'ESS pour n=", n, sep = ""))
+      d <- rep(d, n)
+      Y <- genPhotonCount(d, theta, n)$y
+      effSize <- sapply(testZone, function(i) {
+        res <- likelihoodBootstrapParticleFilter(d,
+                                                 theta,
+                                                 Y,
+                                                 i,
+                                                 algoResample = algoResample,
+                                                 exportXi = TRUE)
+        res <- res$xi$sampleSize
+        return(mean(res))
+      })
+      logTotalTime(start)
+      return(effSize)
+    }
+  testZone <- 2:1000
+  essNoResmp100 <- essByParticles(12, theta, 100, testZone)
+  essResmp100 <-
+    essByParticles(12, theta, 100, testZone, algoResample = residualResampling)
+  essNoResmp200 <- essByParticles(12, theta, 200, testZone)
+  essResmp200 <-
+    essByParticles(12, theta, 200, testZone, algoResample = residualResampling)
+  
+  par(mfrow = c(2, 2))
+  plot(
+    testZone,
+    essNoResmp100 / testZone,
+    main = "T=100 - Pas de rééchantillonnage",
+    ylab = "ESS/N",
+    xlab = "N",
+    type = "l"
+  )
+  plot(
+    testZone,
+    essNoResmp200 / testZone,
+    main = "T=200 - Pas de rééchantillonnage",
+    ylab = "ESS/N",
+    xlab = "N",
+    type = "l"
+  )
+  plot(
+    testZone,
+    essResmp100 / testZone,
+    main = "T=100 - Rééchantillonnage",
+    ylab = "ESS/N",
+    xlab = "N",
+    type = "l"
+  )
+  plot(
+    testZone,
+    essResmp200 / testZone,
+    main = "T=200 - Rééchantillonnage",
+    ylab = "ESS/N",
+    xlab = "N",
+    type = "l"
+  )
+  par(mfrow = c(1, 1))
+  
+}
+
+### Comportement du filtre
+
+drawXiMean <- FALSE
+
+if (drawXiMean) {
+  par(mfrow = c(2, 2))
+  for (i in c(10, 50, 100, 200)) {
+    particleList <- lapply(1:10, function(i) {
+      res <-
+        likelihoodBootstrapParticleFilter(d,
+                                          theta,
+                                          simulY,
+                                          100,
+                                          algoResample = residualResampling,
+                                          exportXi = TRUE)
+    })
+    allData <- c(simulXi, do.call(c, lapply(1:10, function(j) {
+      return(particleList[[j]]$xi$mean)
+    })))
+    yLim <- c(min(allData), max(allData))
+    print(yLim)
+    plot(
+      particleList[[1]]$xi$mean,
+      ylim = yLim,
+      main = i,
+      xlab = "Temps t",
+      ylab = "Xi",
+      type = "l"
+    )
+    for (i in 2:10) {
+      lines(particleList[[i]]$xi$mean)
+    }
+    points(simulXi)
+  }
+  par(mfrow = c(1, 1))
+  
+}
+
 ##################################################
 ##### ECHANTILLONNAGE DE THETA PAR PMCMC
 
-burnin <- 1000
-pmcmcSize <- 2000
-N <- 100
+burnin <- 100
+pmcmcSize <- 200
+N <- 20
 
-simulThetaIid <- genThetaPosterior(theta, d, simulY, N, pmcmcSize)
-simulThetaIid <- formatResThetaPosterior(simulThetaIid)
-par(mfrow = c(2, 2))
-for (param in getThetaNameList()) {
-  plot(
-    simulThetaIid[[param]][burnin:pmcmcSize],
-    type = "l",
-    main = param,
-    xlab = "Itération",
-    ylab = param
-  )
+simulThetaIid <-
+  genThetaPosterior(theta,
+                    d,
+                    simulY,
+                    N,
+                    pmcmcSize,
+                    componentWise = TRUE,
+                    exportProba = TRUE)
+
+plotSimulResult(simulThetaIid, exportProba = TRUE)
+
+### Variance optimale
+
+pmcmcSize <- 100
+N <- 10
+
+varianceList <- 10^(-6:6)
+monitorChain <- list()
+for (v in varianceList) {
+  temp <-
+    genThetaPosterior(
+      theta,
+      d,
+      simulY,
+      N,
+      pmcmcSize,
+      componentWise = TRUE,
+      exportProba = TRUE,
+      covariance = diag(c(v, rep(1, 3)))
+    )
+  temp <- formatResThetaPosterior(temp, exportProba = TRUE)
+  monitorChain$corr <- append(monitorChain$corr,
+                              acf(temp$beta1, lag.max = 1, plot = FALSE)[["acf"]][2, 1, 1])
+  monitorChain$proba <-
+    append(monitorChain$proba, mean(temp$proba[1,]))
 }
-par(mfrow = c(1, 1))
+
+best <-
+  genThetaPosterior(
+    theta,
+    d,
+    simulY,
+    20,
+    500,
+    componentWise = TRUE,
+    exportProba = TRUE,
+    covariance = diag(c(.0001,.01,.001,.005))
+  )
+plotSimulResult(best, 0, 500)
+
+####################################################################################
+##### TOUTE LA SUITE DOIT ETRE MISE A JOUR
+
+cov <- acf(simulThetaIid$beta1, lag.max = 1, plot = FALSE)
 
 simulThetaIidRes <-
   genThetaPosterior(theta, d, simulY, N, pmcmcSize, algoResample = residualResampling)
@@ -170,3 +318,7 @@ for (param in getThetaNameList()) {
   print(mean(simulThetaIidResIndep[[param]]))
   print(mean(simulThetaIidResIndep[[param]][burnin:pmcmcSize]))
 }
+
+### Variance des MCMC
+library(mcmc)
+initseq(1:10)$var.con
