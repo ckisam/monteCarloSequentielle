@@ -10,6 +10,7 @@ setwd(wd)
 getwd()
 
 library(truncnorm)
+library(mvtnorm)
 
 ##################################################
 ##### FONCTIONS UTILITAIRES
@@ -161,7 +162,6 @@ multinomialResampling <- function(xi, weights, N = length(xi)) {
 residualResampling <- function(xi, weights) {
   N <- length(xi)
   w <- weights
-  print(w)
   if (sum(w) != 1) {
     w <- w / sum(w)
   }
@@ -188,7 +188,6 @@ residualResampling <- function(xi, weights) {
   
   ## On retourne les particules echanillonnees
   res <- c(copy, residual)
-  print(res)
   # sample(res)
   return(res)
 }
@@ -245,7 +244,7 @@ likelihoodBootstrapParticleFilter <-
                    sd = (abs(delta) / sqrt(1 - rho ^ 2)))
     # -2- Ponderation
     w <- sapply(1:N, function(j) {
-      lambda <- d[1] * exp(beta1 + (beta2 * j / n) + xiGen[j])
+      lambda <- d[1] * exp(beta1 + beta2 / n + xiGen[j])
       lkh <- dpois(x = Y[1], lambda = lambda)
       return(lkh)
     })
@@ -278,7 +277,7 @@ likelihoodBootstrapParticleFilter <-
       })
       # -2- Ponderation
       w <- sapply(1:N, function(j) {
-        lambda <- d[1] * exp(beta1 + (beta2 * j / n) + xiGen[j])
+        lambda <- d[i] * exp(beta1 + (beta2 * i / n) + xiGen[j])
         lkh <- dpois(x = Y[i], lambda = lambda)
         return(lkh)
       })
@@ -418,7 +417,7 @@ genNewProposalSimpleIid <-
 #                         mean = 0)
 #   return(res)
 # }
-# 
+#
 # densitySimpleIidIndep <- function(theta, log = FALSE) {
 #   require(truncnorm)
 #   res <- list()
@@ -438,7 +437,7 @@ genNewProposalSimpleIid <-
 #   }
 #   return(res)
 # }
-# 
+#
 # genNewProposalSimpleIidIndep <- function(theta) {
 #   res <- list()
 #   res$value <- genSimpleIidIndep(theta)
@@ -609,9 +608,9 @@ formatResThetaPosterior <- function(rawRes, exportProba = FALSE) {
     thetaNameList <- append(thetaNameList, "proba")
   }
   for (name in thetaNameList) {
-    res[[name]] <- sapply(1:n, function(i) {
+    res[[name]] <- do.call(c, lapply(1:n, function(i) {
       return(rawRes[[i]][[name]])
-    })
+    }))
   }
   return(res)
 }
@@ -641,7 +640,7 @@ plotSimulResult <-
       for (i in 1:length(getThetaNameList())) {
         param <- getThetaNameList()[i]
         plot(
-          resultFormat$proba[i, ][burnin:pmcmcSize],
+          resultFormat$proba[i,][burnin:pmcmcSize],
           type = "l",
           main = param,
           xlab = "Itération",
@@ -676,67 +675,78 @@ genThetaPosteriorNew <-
       thetaLkh <- exp(thetaLkh)
     }
     for (i in 1:nb) {
-      if(componentWise){
-      for (j in 1:length(thetaNameList)) {
-        param <- thetaNameList[j]
-        noise <- rnorm(1, sd = sqrt(covariance[j, j]))
-        newTheta <- theta
-        newTheta[[param]] <- newTheta[[param]] + noise
-        if (abs(newTheta$rho) > .99) {
-          next
-        }
-        newThetaLkh <-
-          estimateLikelihood(d, newTheta, Y, N, log, algoResample)
-        if (log) {
-          newThetaLkh <- exp(newThetaLkh)
-        }
-        if (thetaLkh == 0) {
-          if (newThetaLkh == 0) {
-            proba <- .5
-          } else{
-            proba <- 1
+      if (componentWise) {
+        for (j in 1:length(thetaNameList)) {
+          param <- thetaNameList[j]
+          noise <- rnorm(1, sd = sqrt(covariance[j, j]))
+          newTheta <- theta
+          newTheta[[param]] <- newTheta[[param]] + noise
+          if (abs(newTheta$rho) > .99) {
+            if (exportProba) {
+              res[[i]]$proba$rho <- proba
+            }
+            next
           }
+          newThetaLkh <-
+            estimateLikelihood(d, newTheta, Y, N, log, algoResample)
+          if (log) {
+            newThetaLkh <- exp(newThetaLkh)
+          }
+          if (thetaLkh == 0) {
+            if (newThetaLkh == 0) {
+              proba <- .5
+            } else{
+              proba <- 1
+            }
+          } else{
+            ratio <- newThetaLkh / thetaLkh
+            proba <- min(1, ratio)
+          }
+          modif <- rbinom(1, 1, proba)
+          if (modif == 1) {
+            theta <- newTheta
+            thetaLkh <- newThetaLkh
+          }
+          if (exportProba) {
+            res[[i]]$proba[[param]] <- proba
+          }
+        }
+      } else{
+        noise <- as.vector(rmvnorm(1, rep(0, 4), sigma = covariance))
+        newTheta <- theta
+        newTheta$beta1 <- newTheta$beta1 + noise[1]
+        newTheta$beta2 <- newTheta$beta2 + noise[2]
+        newTheta$delta <- newTheta$delta + noise[3]
+        newTheta$rho <- newTheta$rho + noise[4]
+        if (abs(newTheta$rho) > .99) {
+          proba <- 0
         } else{
-          ratio <- newThetaLkh / thetaLkh
-          proba <- min(1, ratio)
+          newThetaLkh <-
+            estimateLikelihood(d, newTheta, Y, N, log, algoResample)
+          if (log) {
+            newThetaLkh <- exp(newThetaLkh)
+          }
+          if (thetaLkh == 0) {
+            if (newThetaLkh == 0) {
+              proba <- .5
+            } else{
+              proba <- 1
+            }
+          } else{
+            ratio <- newThetaLkh / thetaLkh
+            proba <- min(1, ratio)
+          }
         }
         modif <- rbinom(1, 1, proba)
         if (modif == 1) {
           theta <- newTheta
           thetaLkh <- newThetaLkh
         }
-      }}else{
-        noise <- mv
-        newTheta <- theta
-        newTheta[[param]] <- newTheta[[param]] + noise
-        if (abs(newTheta$rho) > .99) {
-          next
-        }
-        newThetaLkh <-
-          estimateLikelihood(d, newTheta, Y, N, log, algoResample)
-        if (log) {
-          newThetaLkh <- exp(newThetaLkh)
-        }
-        if (thetaLkh == 0) {
-          if (newThetaLkh == 0) {
-            proba <- .5
-          } else{
-            proba <- 1
-          }
-        } else{
-          ratio <- newThetaLkh / thetaLkh
-          proba <- min(1, ratio)
-        }
-        modif <- rbinom(1, 1, proba)
-        if (modif == 1) {
-          theta <- newTheta
-          thetaLkh <- newThetaLkh
+        if (exportProba) {
+          res[[i]]$proba <- proba
         }
       }
       res[[i]] <- theta
-      # if (exportProba) {
-      #   res[[i]]$proba <- proba
-      # }
       if (i %% pct == 0) {
         logWithTime(start, paste((i / pct) * 10, "% généré", sep = ""))
       }
