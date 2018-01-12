@@ -452,6 +452,66 @@ printEstim(posteriorStartUpThetaRefCompWiseResample)
 # [1] "Beta1 = -0.15348644005593 - Beta2 = 1.3121308928661
 # - Delta = -0.0151397782887926 - rho = 0.661796838760115"
 
+printVariance <- function(estim) {
+  require(mcmcse)
+  estimFormat <- formatResThetaPosterior(estim)
+  beta1 <- mcse(estimFormat$beta1[2000:3000], method = "bm")
+  beta2 <- mcse(estimFormat$beta2[2000:3000], method = "bm")
+  delta <- mcse(estimFormat$delta[2000:3000], method = "bm")
+  rho <- mcse(abs(estimFormat$rho[2000:3000]), method = "bm")
+  print(paste(
+    "Beta1 = ",
+    beta1,
+    " - Beta2 = ",
+    beta2,
+    " - Delta = ",
+    delta,
+    " - rho = ",
+    rho,
+    sep = ""
+  ))
+}
+
+printVariance(posteriorStartUpThetaRef)
+# [1] "Beta1 = -0.0829228027374298 - Beta2 = 1.08849766505897
+# - Delta = 0.0586912867078934 - rho = 0.502502020583862"  
+# [2] "Beta1 = 0.00910785328294363 - Beta2 = 0.0189724875220476
+# - Delta = 0.012629811066568 - rho = 0.0341755192059229"
+printVariance(posteriorStartDownThetaRef)
+# [1] "Beta1 = -0.0133024577986279 - Beta2 = 0.979937043440443
+# - Delta = 0.0707748225827671 - rho = 0.273032101731567"  
+# [2] "Beta1 = 0.00617256602560364 - Beta2 = 0.0140999154410152
+# - Delta = 0.0129860162379289 - rho = 0.0460113249783819"
+printVariance(posteriorStartUpThetaRefCompWise)
+# [1] "Beta1 = 0.0161758936613691 - Beta2 = 0.950449829870693
+# - Delta = -0.00662497180056832 - rho = 0.470665739825585" 
+# [2] "Beta1 = 0.00939046606511996 - Beta2 = 0.0132710094463102
+# - Delta = 0.0188409659562685 - rho = 0.0359275625267412"
+printVariance(posteriorStartDownThetaRefCompWise)
+# [1] "Beta1 = -0.0703026604734542 - Beta2 = 1.03301050083062
+# - Delta = -0.00619558098948477 - rho = 0.424406085628546"
+# [2] "Beta1 = 0.0122634131617299 - Beta2 = 0.0198791181570819
+# - Delta = 0.0154969563142585 - rho = 0.0356930053594359"
+printVariance(posteriorStartUpThetaRefResample)
+# [1] "Beta1 = -5.7932618573769 - Beta2 = -3.65355548226205
+# - Delta = -0.432720031410151 - rho = 0.986923146205778"
+# [2] "Beta1 = 0 - Beta2 = 0 - Delta = 0 - rho = 0"      
+printVariance(posteriorStartUpThetaRefCompWiseResample)
+# [1] "Beta1 = -0.15348644005593 - Beta2 = 1.3121308928661
+# - Delta = -0.0151397782887926 - rho = 0.661796838760115"     
+# [2] "Beta1 = 0.0151891523734407 - Beta2 = 0.0238601777355272
+# - Delta = 0.00571777566039334 - rho = 0.0276327499033897"
+
+# computeBatchMeanVariance <- function(simul, a, b, totalSize){
+#   start <- totalSize-a*b
+#   interest <- simul[(totalSize-a*b+1):totalSize]
+#   mean <- 
+#   res <- 0
+#   for(i in 1:a){
+#     res <- res+
+#   }
+# }
+
 # Nombre de particules
 genBeta1Move <- function(N) {
   theta <- list(
@@ -473,6 +533,9 @@ beta1Move10 <- genBeta1Move(10)
 beta1Move100 <- genBeta1Move(100)
 beta1Move200 <- genBeta1Move(200)
 
+pmcmcSize <- 300
+N <- 100
+covariance <- diag(c(1?1,1,1))
 testAVirer <-
   genThetaPosteriorNew(
     # list(
@@ -508,8 +571,9 @@ testAVirer <-
     # ), n)$y,
     N,
     pmcmcSize,
-    exportProba = TRUE,
-    algoResample = residualResampling,
+    componentWise = TRUE,
+    #exportProba = TRUE,
+    #algoResample = residualResampling,
     log = TRUE,
     covariance = covariance
   )
