@@ -189,6 +189,8 @@ print(Y)
 plot(Y)
 
 
+time1 <- Sys.time()
+
 beta <- c(0,1)
 rho <- 0
 delta <- 0.01
@@ -213,6 +215,8 @@ t_delta <- vector(length=length(Y))
 
 for( i in 1:1000){
   
+  time2 <- Sys.time()
+  
   t_xi <- schB_genXiTimeSerie(beta, delta, rho, t_xi, Y)
   
   t_eta <- schB_genEta(beta, delta, rho, t_xi, Y)
@@ -227,8 +231,19 @@ for( i in 1:1000){
   t_rho[i] <- rho_delta[1]
   t_delta[i] <- rho_delta[2]
   
+  time3 <- Sys.time()
+  
 }
 
+time4 <- Sys.time()
+
+
+print((time4 - time1))
+
+print(var(t_beta1[500:1000]))
+print(var(t_beta2[500:1000]))
+print(var(t_rho[500:1000]))
+print(var(t_delta[500:1000]))
 
 #plot(t_xi, type="l")
 plot(t_beta1, type="l")
