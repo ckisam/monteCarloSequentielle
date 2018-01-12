@@ -161,6 +161,7 @@ multinomialResampling <- function(xi, weights, N = length(xi)) {
 residualResampling <- function(xi, weights) {
   N <- length(xi)
   w <- weights
+  print(w)
   if (sum(w) != 1) {
     w <- w / sum(w)
   }
@@ -175,12 +176,19 @@ residualResampling <- function(xi, weights) {
   ## On tire les particules residuelles par
   ## reechantillonnage multinomial
   w <- N * w - nbCopy
-  w <- w / sum(w)
+  if (sum(w) > 0) {
+    w <- w / sum(w)
+  }
   N <- N - length(copy)
-  residual <- multinomialResampling(xi, w, N)
+  if (N > 0) {
+    residual <- multinomialResampling(xi, w, N)
+  } else{
+    residual <- c()
+  }
   
   ## On retourne les particules echanillonnees
   res <- c(copy, residual)
+  print(res)
   # sample(res)
   return(res)
 }
@@ -234,10 +242,10 @@ likelihoodBootstrapParticleFilter <-
     # -1- Initialisation
     xiGen <- rnorm(n = N,
                    mean = 0,
-                   sd = (delta / sqrt(1 - rho ^ 2)))
+                   sd = (abs(delta) / sqrt(1 - rho ^ 2)))
     # -2- Ponderation
     w <- sapply(1:N, function(j) {
-      lambda <- d[1] * exp(beta1 + (beta2 / n) + xiGen[j])
+      lambda <- d[1] * exp(beta1 + (beta2 * j / n) + xiGen[j])
       lkh <- dpois(x = Y[1], lambda = lambda)
       return(lkh)
     })
@@ -265,12 +273,12 @@ likelihoodBootstrapParticleFilter <-
         return(rnorm(
           n = 1,
           mean = rho * xiSel[j],
-          sd = delta
+          sd = abs(delta)
         ))
       })
       # -2- Ponderation
       w <- sapply(1:N, function(j) {
-        lambda <- d[1] * exp(beta1 + (beta2 / n) + xiGen[j])
+        lambda <- d[1] * exp(beta1 + (beta2 * j / n) + xiGen[j])
         lkh <- dpois(x = Y[i], lambda = lambda)
         return(lkh)
       })
@@ -398,46 +406,46 @@ genNewProposalSimpleIid <-
 
 ### Proposal independante non autocorrelee
 
-genSimpleIidIndep <- function(theta) {
-  require(truncnorm)
-  res <- list()
-  res$beta1 <- rnorm(1, mean = 0)
-  res$beta2 <- rnorm(1, mean = 0)
-  res$delta <- rtruncnorm(1, a = 0, mean = 0)
-  res$rho <- rtruncnorm(1,
-                        a = -.99,
-                        b = .99,
-                        mean = 0)
-  return(res)
-}
-
-densitySimpleIidIndep <- function(theta, log = FALSE) {
-  require(truncnorm)
-  res <- list()
-  res$beta1 <- dnorm(theta$beta1, mean = 0, log = log)
-  res$beta2 <- dnorm(theta$beta2, mean = 0, log = log)
-  res$delta <-
-    dtruncnorm(theta$delta, a = 0, mean = 0)
-  if (log) {
-    res$delta <- log(res$delta)
-  }
-  res$rho <- dtruncnorm(theta$rho,
-                        a = -.99,
-                        b = .99,
-                        mean = 0)
-  if (log) {
-    res$rho <- log(res$rho)
-  }
-  return(res)
-}
-
-genNewProposalSimpleIidIndep <- function(theta) {
-  res <- list()
-  res$value <- genSimpleIidIndep(theta)
-  res$density <- densitySimpleIidIndep(res$value)
-  res$densityInv <- densitySimpleIidIndep(theta)
-  return(res)
-}
+# genSimpleIidIndep <- function(theta) {
+#   require(truncnorm)
+#   res <- list()
+#   res$beta1 <- rnorm(1, mean = 0)
+#   res$beta2 <- rnorm(1, mean = 0)
+#   res$delta <- rtruncnorm(1, a = 0, mean = 0)
+#   res$rho <- rtruncnorm(1,
+#                         a = -.99,
+#                         b = .99,
+#                         mean = 0)
+#   return(res)
+# }
+# 
+# densitySimpleIidIndep <- function(theta, log = FALSE) {
+#   require(truncnorm)
+#   res <- list()
+#   res$beta1 <- dnorm(theta$beta1, mean = 0, log = log)
+#   res$beta2 <- dnorm(theta$beta2, mean = 0, log = log)
+#   res$delta <-
+#     dtruncnorm(theta$delta, a = 0, mean = 0)
+#   if (log) {
+#     res$delta <- log(res$delta)
+#   }
+#   res$rho <- dtruncnorm(theta$rho,
+#                         a = -.99,
+#                         b = .99,
+#                         mean = 0)
+#   if (log) {
+#     res$rho <- log(res$rho)
+#   }
+#   return(res)
+# }
+# 
+# genNewProposalSimpleIidIndep <- function(theta) {
+#   res <- list()
+#   res$value <- genSimpleIidIndep(theta)
+#   res$density <- densitySimpleIidIndep(res$value)
+#   res$densityInv <- densitySimpleIidIndep(theta)
+#   return(res)
+# }
 
 # genThetaPosterior <-
 #   function(theta0,
@@ -579,6 +587,10 @@ updateMCMC <- function(theta,
       lkhRatio <-
         (newThetaLkh * proposal$densityInv / (thetaLkh * proposal$density))
     }
+    print(thetaLkh)
+    print(newThetaLkh)
+    print(proposal$density)
+    print(proposal$densityInv)
     proba <- min(lkhRatio, 1)
     res$proba <- proba
     if (rbinom(1, 1, proba) == 1) {
@@ -638,6 +650,99 @@ plotSimulResult <-
       }
     }
     par(mfrow = c(1, 1))
+  }
+
+genThetaPosteriorNew <-
+  function(theta0,
+           d,
+           Y,
+           N,
+           nb,
+           estimateLikelihood = likelihoodBootstrapParticleFilter,
+           log = FALSE,
+           algoResample = noResampling,
+           componentWise = FALSE,
+           exportProba = FALSE,
+           covariance = diag(rep(1, 4))) {
+    res <- list()
+    start <- getStart()
+    logStart("Generation d'un echantillon PMCMC de theta")
+    pct <- nb %/% 10
+    thetaNameList <- getThetaNameList()
+    theta <- theta0
+    thetaLkh <-
+      estimateLikelihood(d, theta, Y, N, log, algoResample)
+    if (log) {
+      thetaLkh <- exp(thetaLkh)
+    }
+    for (i in 1:nb) {
+      if(componentWise){
+      for (j in 1:length(thetaNameList)) {
+        param <- thetaNameList[j]
+        noise <- rnorm(1, sd = sqrt(covariance[j, j]))
+        newTheta <- theta
+        newTheta[[param]] <- newTheta[[param]] + noise
+        if (abs(newTheta$rho) > .99) {
+          next
+        }
+        newThetaLkh <-
+          estimateLikelihood(d, newTheta, Y, N, log, algoResample)
+        if (log) {
+          newThetaLkh <- exp(newThetaLkh)
+        }
+        if (thetaLkh == 0) {
+          if (newThetaLkh == 0) {
+            proba <- .5
+          } else{
+            proba <- 1
+          }
+        } else{
+          ratio <- newThetaLkh / thetaLkh
+          proba <- min(1, ratio)
+        }
+        modif <- rbinom(1, 1, proba)
+        if (modif == 1) {
+          theta <- newTheta
+          thetaLkh <- newThetaLkh
+        }
+      }}else{
+        noise <- mv
+        newTheta <- theta
+        newTheta[[param]] <- newTheta[[param]] + noise
+        if (abs(newTheta$rho) > .99) {
+          next
+        }
+        newThetaLkh <-
+          estimateLikelihood(d, newTheta, Y, N, log, algoResample)
+        if (log) {
+          newThetaLkh <- exp(newThetaLkh)
+        }
+        if (thetaLkh == 0) {
+          if (newThetaLkh == 0) {
+            proba <- .5
+          } else{
+            proba <- 1
+          }
+        } else{
+          ratio <- newThetaLkh / thetaLkh
+          proba <- min(1, ratio)
+        }
+        modif <- rbinom(1, 1, proba)
+        if (modif == 1) {
+          theta <- newTheta
+          thetaLkh <- newThetaLkh
+        }
+      }
+      res[[i]] <- theta
+      # if (exportProba) {
+      #   res[[i]]$proba <- proba
+      # }
+      if (i %% pct == 0) {
+        logWithTime(start, paste((i / pct) * 10, "% généré", sep = ""))
+      }
+    }
+    logTotalTime(start)
+    return(res)
   }
 
 ##################################################

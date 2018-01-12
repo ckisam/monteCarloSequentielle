@@ -204,57 +204,160 @@ if (drawXiMean) {
 
 burnin <- 100
 pmcmcSize <- 200
-N <- 20
+N <- 100
+covariance <- diag(c(.1, .1, .1, .1))
 
 simulThetaIid <-
-  genThetaPosterior(theta,
-                    d,
-                    simulY,
-                    N,
-                    pmcmcSize,
-                    componentWise = TRUE,
-                    exportProba = TRUE)
-
-plotSimulResult(simulThetaIid, exportProba = TRUE)
-
-### Variance optimale
-
-pmcmcSize <- 100
-N <- 10
-
-varianceList <- 10^(-6:6)
-monitorChain <- list()
-for (v in varianceList) {
-  temp <-
-    genThetaPosterior(
-      theta,
-      d,
-      simulY,
-      N,
-      pmcmcSize,
-      componentWise = TRUE,
-      exportProba = TRUE,
-      covariance = diag(c(v, rep(1, 3)))
-    )
-  temp <- formatResThetaPosterior(temp, exportProba = TRUE)
-  monitorChain$corr <- append(monitorChain$corr,
-                              acf(temp$beta1, lag.max = 1, plot = FALSE)[["acf"]][2, 1, 1])
-  monitorChain$proba <-
-    append(monitorChain$proba, mean(temp$proba[1,]))
-}
-
-best <-
   genThetaPosterior(
     theta,
     d,
     simulY,
-    20,
-    500,
+    N,
+    pmcmcSize,
     componentWise = TRUE,
     exportProba = TRUE,
-    covariance = diag(c(.0001,.01,.001,.005))
+    covariance = covariance
   )
-plotSimulResult(best, 0, 500)
+
+plotSimulResult(simulThetaIid, burnin, pmcmcSize, exportProba = TRUE)
+
+### Variance optimale
+
+# for (v in varianceList) {
+#   temp <-
+#     genThetaPosterior(
+#       theta,
+#       d,
+#       simulY,
+#       N,
+#       pmcmcSize,
+#       componentWise = TRUE,
+#       exportProba = TRUE,
+#       covariance = diag(c(v, rep(1, 3)))
+#     )
+#   temp <- formatResThetaPosterior(temp, exportProba = TRUE)
+#   monitorChain$corr <- append(monitorChain$corr,
+#                               acf(temp$beta1, lag.max = 1, plot = FALSE)[["acf"]][2, 1, 1])
+#   monitorChain$proba <-
+#     append(monitorChain$proba, mean(temp$proba[1,]))
+# }
+
+pmcmcSize <- 100
+N <- 10
+
+# varianceList <- 10 ^ (-6:6)
+varianceList <- c(.001, 1, 100)
+monitorChain <- list()
+
+for (i in 1:length(varianceList)) {
+  monitorChain[[i]] <- list()
+  for (j in 1:length(varianceList)) {
+    monitorChain[[i]][[j]] <- list()
+    for (k in 1:length(varianceList)) {
+      monitorChain[[i]][[j]][[k]] <- list()
+      for (l in 1:length(varianceList)) {
+        monitorChain[[i]][[j]][[k]][[l]] <- list()
+        covariance <- diag(c(
+          varianceList[i],
+          varianceList[j],
+          varianceList[k],
+          varianceList[l]
+        ))
+        temp <-
+          genThetaPosterior(
+            theta,
+            d,
+            simulY,
+            N,
+            pmcmcSize,
+            componentWise = TRUE,
+            exportProba = TRUE,
+            covariance = covariance
+          )
+        temp <- formatResThetaPosterior(temp, exportProba = TRUE)
+        for (param in getThetaNameList()) {
+          monitorChain[[i]][[j]][[k]][[l]]$corr[[param]] <-
+            acf(temp[[param]], lag.max = 1, plot = FALSE)[["acf"]][2, 1, 1]
+        }
+        monitorChain[[i]][[j]][[k]][[l]]$proba <-
+          append(monitorChain$proba, mean(temp$proba[1, ]))
+      }
+    }
+  }
+}
+
+maxProba <- list()
+for (i in 1:length(varianceList)) {
+  for (j in 1:length(varianceList)) {
+    for (k in 1:length(varianceList)) {
+      for (l in 1:length(varianceList)) {
+        if (monitorChain[[i]][[j]][[k]][[l]]$proba >= .2) {
+          maxProba[[length(maxProba) + 1]] <- c(i, j, k, l)
+        }
+      }
+    }
+  }
+}
+
+for(l in maxProba) {
+  print(l)
+  print(monitorChain[[l[1]]][[l[2]]][[l[3]]][[l[4]]]$proba)
+}
+
+
+# alterTheta <- list(
+#   beta1 = 10,
+#   beta2 = -5,
+#   delta = 3,
+#   rho = 0.9
+# )
+alterTheta <- list(
+  beta1 = 0,
+  beta2 = 0,
+  delta = 10,
+  rho = 0.7
+)
+burnin <- 1000
+pmcmcSize <- 2000
+N <- 100
+# covariance <- diag(c(.001, .01, .01, .001))
+covariance <- diag(c(.1, .1, .1, .1))
+
+testAVirer <-
+  genThetaPosteriorNew(
+    list(
+      beta1 = 5,
+      beta2 = 5,
+      delta = 5,
+      rho = .2
+    ),
+    # list(
+    #   beta1 = 0,
+    #   beta2 = 1,
+    #   delta = .1,
+    #   rho = .5
+    # ),
+    d,
+    genPhotonCount(d, list(
+      beta1 = 0,
+      beta2 = 1,
+      delta = .1,
+      rho = .5
+    ), n)$y,
+    N,
+    pmcmcSize,
+    exportProba = TRUE,
+    #algoResample = residualResampling,
+    log = TRUE,
+    covariance = covariance
+  )
+plotSimulResult(testAVirer, 1, pmcmcSize)
+
+testAVirer <- formatResThetaPosterior(testAVirer)
+print(mean(testAVirer$beta1[burnin:pmcmcSize]))
+print(mean(testAVirer$beta2[burnin:pmcmcSize]))
+print(mean(testAVirer$delta[burnin:pmcmcSize]))
+print(mean(abs(testAVirer$rho[burnin:pmcmcSize])))
 
 ####################################################################################
 ##### TOUTE LA SUITE DOIT ETRE MISE A JOUR
