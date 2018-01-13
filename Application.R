@@ -331,174 +331,85 @@ plotSimulResult(posteriorStartDownThetaRefResample, 1, pmcmcSize) # OK - 1m40
 plotSimulResult(posteriorStartUpThetaRefCompWiseResample, 1, pmcmcSize) # Pb
 plotSimulResult(posteriorStartDownThetaRefCompWiseResample, 1, pmcmcSize) # OK - 12 min
 
-printMeanAndVariance(posteriorStartDownThetaRef,2000,3000)
+printMeanAndVariance(posteriorStartDownThetaRef, 2000, 3000)
 # [1] "Beta1 = -0.0829228027374298 - Beta2 = 1.08849766505897
-# - Delta = 0.0586912867078934 - rho = 0.502502020583862"  
+# - Delta = 0.0586912867078934 - rho = 0.502502020583862"
 # [2] "Beta1 = 0.00910785328294363 - Beta2 = 0.0189724875220476
 # - Delta = 0.012629811066568 - rho = 0.0341755192059229"
-printMeanAndVariance(posteriorStartUpThetaRef,2000,3000)
+printMeanAndVariance(posteriorStartUpThetaRef, 2000, 3000)
 # [1] "Beta1 = -0.0133024577986279 - Beta2 = 0.979937043440443
-# - Delta = 0.0707748225827671 - rho = 0.273032101731567"  
+# - Delta = 0.0707748225827671 - rho = 0.273032101731567"
 # [2] "Beta1 = 0.00617256602560364 - Beta2 = 0.0140999154410152
 # - Delta = 0.0129860162379289 - rho = 0.0460113249783819"
-printMeanAndVariance(posteriorStartDownThetaRefCompWise,2000,3000)
+printMeanAndVariance(posteriorStartDownThetaRefCompWise, 2000, 3000)
 # [1] "Beta1 = 0.0161758936613691 - Beta2 = 0.950449829870693
-# - Delta = -0.00662497180056832 - rho = 0.470665739825585" 
+# - Delta = -0.00662497180056832 - rho = 0.470665739825585"
 # [2] "Beta1 = 0.00939046606511996 - Beta2 = 0.0132710094463102
 # - Delta = 0.0188409659562685 - rho = 0.0359275625267412"
-printMeanAndVariance(posteriorStartUpThetaRefCompWise,2000,3000)
+printMeanAndVariance(posteriorStartUpThetaRefCompWise, 2000, 3000)
 # [1] "Beta1 = -0.0703026604734542 - Beta2 = 1.03301050083062
 # - Delta = -0.00619558098948477 - rho = 0.424406085628546"
 # [2] "Beta1 = 0.0122634131617299 - Beta2 = 0.0198791181570819
 # - Delta = 0.0154969563142585 - rho = 0.0356930053594359"
-printMeanAndVariance(posteriorStartUpThetaRefResample,2000,3000)
-printMeanAndVariance(posteriorStartDownThetaRefResample,2000,3000)
+printMeanAndVariance(posteriorStartUpThetaRefResample, 2000, 3000)
+printMeanAndVariance(posteriorStartDownThetaRefResample, 2000, 3000)
 # [1] "Beta1 = -5.7932618573769 - Beta2 = -3.65355548226205
 # - Delta = -0.432720031410151 - rho = 0.986923146205778"
-# [2] "Beta1 = 0 - Beta2 = 0 - Delta = 0 - rho = 0"      
-printMeanAndVariance(posteriorStartUpThetaRefCompWiseResample,2000,3000)
-printMeanAndVariance(posteriorStartDownThetaRefCompWiseResample,2000,3000)
+# [2] "Beta1 = 0 - Beta2 = 0 - Delta = 0 - rho = 0"
+printMeanAndVariance(posteriorStartUpThetaRefCompWiseResample, 2000, 3000)
+printMeanAndVariance(posteriorStartDownThetaRefCompWiseResample, 2000, 3000)
 # [1] "Beta1 = -0.15348644005593 - Beta2 = 1.3121308928661
-# - Delta = -0.0151397782887926 - rho = 0.661796838760115"     
+# - Delta = -0.0151397782887926 - rho = 0.661796838760115"
 # [2] "Beta1 = 0.0151891523734407 - Beta2 = 0.0238601777355272
 # - Delta = 0.00571777566039334 - rho = 0.0276327499033897"
 
-# Nombre de particules
-genBeta1Move <- function(N) {
-  theta <- list(
-    beta1 = 0,
-    beta2 = 1,
-    delta = .1,
-    rho = .5
-  )
-  y <- genPhotonCount(rep(12, 100), theta, 100)$y
-  res <- sapply(-100:100, function(i) {
-    newTheta <- theta
-    newTheta$beta1 <- i
-    return(likelihoodBootstrapParticleFilter(rep(12, 100), theta, y, N, log =
-                                               TRUE))
-  })
-  return(res)
-}
-beta1Move10 <- genBeta1Move(10)
-beta1Move100 <- genBeta1Move(100)
-beta1Move200 <- genBeta1Move(200)
+################################################################################
+########## ECHANTILLONNAGE MCMC AVEC GIBBS STANDARD
 
-pmcmcSize <- 300
-N <- 100
-covariance <- diag(c(1?1,1,1))
-testAVirer <-
-  genThetaPosterior(
-    # list(
-    #   beta1 = -5,
-    #   beta2 = -5,
-    #   delta = -5,
-    #   rho = .2
-    # ),
-    list(
-      beta1 = 2,
-      beta2 = 4,
-      delta = 5,
-      rho = .5
-    ),
-    # list(
-    #   beta1 = 0,
-    #   beta2 = 1,
-    #   delta = .1,
-    #   rho = .5
-    # ),
-    d,
-    genPhotonCount(d, list(
-      beta1 = 0,
-      beta2 = 1,
-      delta = .1,
-      rho = .5
-    ), n)$y,
-    # genPhotonCount(d, list(
-    #   beta1 = 2,
-    #   beta2 = 4,
-    #   delta = 5,
-    #   rho = .5
-    # ), n)$y,
-    N,
-    pmcmcSize,
-    componentWise = TRUE,
-    #exportProba = TRUE,
-    #algoResample = residualResampling,
-    log = TRUE,
-    covariance = covariance
-  )
-plotSimulResult(testAVirer, 1, pmcmcSize)
+theta <- list(
+  beta1 = 0,
+  beta2 = 1,
+  delta = .1,
+  rho = .5
+)
+n <- 100
+d <- 12
+d <- rep(d, n)
 
-testAVirer <- formatResThetaPosterior(testAVirer)
-print(mean(testAVirer$beta1[burnin:pmcmcSize]))
-print(mean(testAVirer$beta2[burnin:pmcmcSize]))
-print(mean(testAVirer$delta[burnin:pmcmcSize]))
-print(mean(abs(testAVirer$rho[burnin:pmcmcSize])))
+photonCount <- genPhotonCount(d, theta, n)
+y <- photonCount$y
+xi <- photonCount$xi
 
-####################################################################################
-##### TOUTE LA SUITE DOIT ETRE MISE A JOUR
+startUp <- list(
+  beta1 = 5,
+  beta2 = 5,
+  delta = 5,
+  rho = .2
+)
+startDown <- list(
+  beta1 = -5,
+  beta2 = -5,
+  delta = -5,
+  rho = .2
+)
 
-cov <- acf(simulThetaIid$beta1, lag.max = 1, plot = FALSE)
-
-simulThetaIidRes <-
-  genThetaPosterior(theta, d, simulY, N, pmcmcSize, algoResample = residualResampling)
-simulThetaIidRes <- formatResThetaPosterior(simulThetaIidRes)
-par(mfrow = c(2, 2))
-for (param in getThetaNameList()) {
-  plot(
-    simulThetaIidRes[[param]][burnin:pmcmcSize],
-    type = "l",
-    main = param,
-    xlab = "Itération",
-    ylab = param
-  )
-}
-par(mfrow = c(1, 1))
-
-simulThetaIidIndep <-
-  genThetaPosterior(theta, d, simulY, N, pmcmcSize, genNewProposal = genNewProposalSimpleIidIndep)
-simulThetaIidIndep <- formatResThetaPosterior(simulThetaIidIndep)
-par(mfrow = c(2, 2))
-for (param in getThetaNameList()) {
-  plot(
-    simulThetaIidIndep[[param]][burnin:pmcmcSize],
-    type = "l",
-    main = param,
-    xlab = "Itération",
-    ylab = param
-  )
-}
-par(mfrow = c(1, 1))
-
-simulThetaIidResIndep <-
-  genThetaPosterior(theta,
-                    d,
-                    simulY,
-                    N,
-                    pmcmcSize,
-                    algoResample = residualResampling,
-                    genNewProposal = genNewProposalSimpleIidIndep)
-simulThetaIidResIndep <-
-  formatResThetaPosterior(simulThetaIidResIndep)
-par(mfrow = c(2, 2))
-for (param in getThetaNameList()) {
-  plot(
-    simulThetaIidResIndep[[param]][burnin:pmcmcSize],
-    type = "l",
-    main = param,
-    xlab = "Itération",
-    ylab = param
-  )
-}
-par(mfrow = c(1, 1))
-
-for (param in getThetaNameList()) {
-  print(param)
-  print(mean(simulThetaIidResIndep[[param]]))
-  print(mean(simulThetaIidResIndep[[param]][burnin:pmcmcSize]))
-}
-
-### Variance des MCMC
-library(mcmc)
-initseq(1:10)$var.con
+burnin <- 2000
+pmcmcSize <- 3000
+# Up
+gibbsSimulUp <-
+  standardGibbsSamplerA(d, y, startUp, pmcmcSize) # OK 1m50
+plotSimulResult(gibbsSimulUp, 1, 300)
+printMeanAndVariance(gibbsSimulUp, burnin, pmcmcSize)
+# [1] "Beta1 = -0.0289099822690155 - Beta2 = 1.03887640693943
+# - Delta = 0.0932744991082598 - rho = 0.412180098310289"
+# [2] "Beta1 = 0.00144189497925433 - Beta2 = 0.00224081024030777
+# - Delta = 0.000207063878879559 - rho = 0.000299861605264446"
+# Down
+gibbsSimulDown <-
+  standardGibbsSamplerA(d, y, startDown, pmcmcSize) # OK 1m12
+plotSimulResult(gibbsSimulDown, 1, 300)
+printMeanAndVariance(gibbsSimulDown, burnin, pmcmcSize)
+# [1] "Beta1 = -0.0289761239876972 - Beta2 = 1.03863291752434
+# - Delta = 0.0931687209121405 - rho = 0.412300970860029"
+# [2] "Beta1 = 0.0015144481833517 - Beta2 = 0.00214089013021137
+# - Delta = 0.000184221933683781 - rho = 0.000241460521292388"
