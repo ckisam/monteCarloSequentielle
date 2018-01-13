@@ -1,21 +1,22 @@
-##################################################
+######################################################################
 ##### PROJET HMM ET SMC
 ##### PMCMC appliqué à l'astrophysique
 ##### (26/12/2017)
-##################################################
+######################################################################
 
 rm(list = ls())
 wd <- "C:/Users/Samuel/Documents/ENSAE - HMM/monteCarloSequentielle"
 setwd(wd)
 getwd()
 
-
+### Librairies nécessaires :
+### (utiliser install.packages() au besoin)
 library(truncnorm)
 library(mvtnorm)
 library(metRology)
 library(mvtnorm)
 
-##################################################
+######################################################################
 ##### FONCTIONS UTILITAIRES
 
 ### Calcule un ecart-type pondere
@@ -25,22 +26,26 @@ weighted.sd <- function(x, w) {
   )) ^ 2) / (length(x) - 1)))
 }
 
+### Retourne le nom des quatre paramertres de theta
 getThetaNameList <- function() {
   return(c("beta1", "beta2", "delta", "rho"))
 }
 
-### Fonctions de log
+### Fonctions de logging
 
+### Retourne la date
 getStart <- function() {
   return(as.numeric(Sys.time()))
 }
 
+### Message de debut de fonction
 logStart <- function(text) {
   print("##################################################")
   print(paste("#####   ", text, sep = ""))
   print("##################################################")
 }
 
+### Utilise par formatSpendTime()
 formatIntTime <- function(i, l) {
   res <- as.character(i)
   remain <- l - nchar(res)
@@ -49,6 +54,7 @@ formatIntTime <- function(i, l) {
   return(res)
 }
 
+### Formate une duree en texte hhmmss
 formatSpendTime <- function(spend) {
   seconds <- as.integer(spend)
   milliseconds <- formatIntTime(as.integer(1000 * (spend %% 1)), 3)
@@ -61,12 +67,14 @@ formatSpendTime <- function(spend) {
   return(res)
 }
 
+### Message avec duree ecoulee
 logWithTime <- function(start, text) {
   current <- getStart()
   spend <- current - start
   print(paste("(", formatSpendTime(spend), ") - ", text, sep = ""))
 }
 
+### Message de fin de fonction
 logTotalTime <- function(start) {
   end <- getStart()
   spend <- end - start
@@ -75,7 +83,7 @@ logTotalTime <- function(start) {
   print("##################################################")
 }
 
-##################################################
+######################################################################
 ##### SIMULATION DU MODELE
 
 ### Engendre le processus latent auto-regressif stationnaire Xi
@@ -136,7 +144,7 @@ computeTrueLikelihood <- function(d, theta, xi, Y, log) {
   return(likelihood)
 }
 
-##################################################
+######################################################################
 ##### ESTIMATION DE LA VRAISEMBLANCE (theta fixe)
 ##### PAR FILTRE PARTICULAIRE
 
@@ -327,9 +335,12 @@ likelihoodBootstrapParticleFilter <-
     }
   }
 
-##################################################
+######################################################################
 ##### ECHANTILLONNAGE PMCMC
 
+### Simule selon une loi a posteriori a l'aide d'un
+### filtre particulaire. Le filtre par defaut est
+### le filtre "bootstrap"
 genThetaPosterior <-
   function(theta0,
            d,
@@ -434,6 +445,8 @@ genThetaPosterior <-
     return(res)
   }
 
+### Modifie la structure du resultat de genThetaPosterior()
+### de facon plus facilement exploitable
 formatResThetaPosterior <- function(rawRes, exportProba = FALSE) {
   res <- list()
   n <- length(rawRes)
@@ -449,6 +462,8 @@ formatResThetaPosterior <- function(rawRes, exportProba = FALSE) {
   return(res)
 }
 
+### Permet de tracer l'evolution des quatre parametres
+### simules par genThetaPosterior()
 plotSimulResult <-
   function(simulResult,
            burnin,
@@ -474,7 +489,7 @@ plotSimulResult <-
       for (i in 1:length(getThetaNameList())) {
         param <- getThetaNameList()[i]
         plot(
-          resultFormat$proba[i, ][burnin:pmcmcSize],
+          resultFormat$proba[i,][burnin:pmcmcSize],
           type = "l",
           main = param,
           xlab = "Itération",
@@ -485,6 +500,8 @@ plotSimulResult <-
     par(mfrow = c(1, 1))
   }
 
+### Permet d'afficher la moyenne et la variance "batch mean"
+### d'un echantillon simule par genThetaPosterior()
 printMeanAndVariance <- function(estim, burnin, pmcmcSize) {
   require(mcmcse)
   estimFormat <- formatResThetaPosterior(estim)
@@ -505,9 +522,10 @@ printMeanAndVariance <- function(estim, burnin, pmcmcSize) {
   ))
 }
 
-##################################################
+######################################################################
 ##### ARTICLE : STANDARD GIBBS SAMPLER
 
+### Simule un echantillon selon la loi a posteriori
 standardGibbsSamplerA <- function(d, y, theta, nb) {
   start <- getStart()
   pct <- nb %/% 10
@@ -537,6 +555,7 @@ standardGibbsSamplerA <- function(d, y, theta, nb) {
   return(res)
 }
 
+### 3e etape du Gibbs Sampler
 step3S <- function(d, theta, xi, y) {
   rhoMode <-
     sum(xi[2:length(xi)] * xi[1:(length(xi) - 1)]) / sum((xi[2:(length(xi) -
@@ -556,6 +575,7 @@ step3S <- function(d, theta, xi, y) {
   return(theta)
 }
 
+### 2nde etape du Gibbs sampler
 step2A <- function(d, theta, xi, y) {
   require(mvtnorm)
   require(expm)
@@ -598,6 +618,8 @@ step2A <- function(d, theta, xi, y) {
   return(theta)
 }
 
+### Retourne la log-vraisemblance negative de
+### beta sachant les autres donnees
 logLikelihoodBeta <- function(beta, d, y, xi) {
   logLkh <- do.call(c, lapply(1:length(xi), function(i) {
     xb <- beta[1] + beta[2] * (i / length(xi))
@@ -608,6 +630,7 @@ logLikelihoodBeta <- function(beta, d, y, xi) {
   return(-logLkh)
 }
 
+### 1ere etape du Gibbs Sampler
 step1 <- function(d, xi, theta, y) {
   muSigma <-
     computeMuAndSigma(xi, list(
@@ -678,6 +701,8 @@ step1 <- function(d, xi, theta, y) {
   return(res)
 }
 
+### Calcule les moyennes et variances des xi pour
+### la 1ere etape du Gibbs Sampler
 computeMuAndSigma <- function(xi, param) {
   y <- param$y
   delta <- param$delta
@@ -705,6 +730,8 @@ computeMuAndSigma <- function(xi, param) {
   return(res)
 }
 
+### Retourne la log-vraisemblance negative de xi sachant
+### les autres donnees
 logLikelihoodXi <-
   function(xi, mu, sigma, d, t, totalTime, beta1, beta2) {
     logLkh <- -((xi - mu) ^ 2) / (2 * sigma ^ 2)
