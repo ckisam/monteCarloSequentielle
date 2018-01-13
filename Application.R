@@ -351,10 +351,12 @@ printMeanAndVariance(posteriorStartUpThetaRefCompWise,2000,3000)
 # - Delta = -0.00619558098948477 - rho = 0.424406085628546"
 # [2] "Beta1 = 0.0122634131617299 - Beta2 = 0.0198791181570819
 # - Delta = 0.0154969563142585 - rho = 0.0356930053594359"
+printMeanAndVariance(posteriorStartUpThetaRefResample,2000,3000)
 printMeanAndVariance(posteriorStartDownThetaRefResample,2000,3000)
 # [1] "Beta1 = -5.7932618573769 - Beta2 = -3.65355548226205
 # - Delta = -0.432720031410151 - rho = 0.986923146205778"
 # [2] "Beta1 = 0 - Beta2 = 0 - Delta = 0 - rho = 0"      
+printMeanAndVariance(posteriorStartUpThetaRefCompWiseResample,2000,3000)
 printMeanAndVariance(posteriorStartDownThetaRefCompWiseResample,2000,3000)
 # [1] "Beta1 = -0.15348644005593 - Beta2 = 1.3121308928661
 # - Delta = -0.0151397782887926 - rho = 0.661796838760115"     

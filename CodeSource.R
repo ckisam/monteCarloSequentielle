@@ -29,7 +29,7 @@ getThetaNameList <- function() {
 
 ### Fonctions de log
 
-getStart <- function(text) {
+getStart <- function() {
   return(as.numeric(Sys.time()))
 }
 
