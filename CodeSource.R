@@ -9,6 +9,7 @@ wd <- "C:/Users/Samuel/Documents/ENSAE - HMM/monteCarloSequentielle"
 setwd(wd)
 getwd()
 
+
 library(truncnorm)
 library(mvtnorm)
 
@@ -160,6 +161,9 @@ multinomialResampling <- function(xi, weights, N = length(xi)) {
 ### Algorithme de reechantillonnage residuel
 ### utilisable dans un filtre particulaire
 residualResampling <- function(xi, weights) {
+  if (sum(weights) == 0) {
+    return(xi)
+  }
   N <- length(xi)
   w <- weights
   if (sum(w) != 1) {
@@ -198,8 +202,11 @@ residualResampling <- function(xi, weights) {
 ### la degenerescence du processus de filtrage
 computeEffectiveSampleSize <- function(weights) {
   res <- sum(weights * weights)
-  res <- 1 / res
-  return(res)
+  if (res == 0) {
+    return(1)
+  } else{
+    return(1 / res)
+  }
 }
 
 ### Filtre particulaire 'bootstrap'
@@ -248,7 +255,11 @@ likelihoodBootstrapParticleFilter <-
       lkh <- dpois(x = Y[1], lambda = lambda)
       return(lkh)
     })
-    W <- w / sum(w)
+    if (sum(w) > 0) {
+      W <- w / sum(w)
+    } else{
+      W <- w
+    }
     
     if (exportXi) {
       xiMean <- append(xiMean, weighted.mean(xiGen, W))
@@ -281,7 +292,11 @@ likelihoodBootstrapParticleFilter <-
         lkh <- dpois(x = Y[i], lambda = lambda)
         return(lkh)
       })
-      W <- w / sum(w)
+      if (sum(w) > 0) {
+        W <- w / sum(w)
+      } else{
+        W <- w
+      }
       
       if (exportXi) {
         xiMean <- append(xiMean, weighted.mean(xiGen, W))
@@ -313,345 +328,7 @@ likelihoodBootstrapParticleFilter <-
 ##################################################
 ##### ECHANTILLONNAGE PMCMC
 
-### Proposal independante et autocorrelee
-
-genSimpleIid <- function(theta, covariance = diag(rep(1, 4))) {
-  require(truncnorm)
-  res <- list()
-  res$beta1 <-
-    rnorm(1, mean = theta$beta1, sd = sqrt(covariance[1, 1]))
-  res$beta2 <-
-    rnorm(1, mean = theta$beta2, sd = sqrt(covariance[2, 2]))
-  res$delta <-
-    rtruncnorm(1,
-               a = 0,
-               mean = theta$delta,
-               sd = sqrt(covariance[3, 3]))
-  res$rho <- rtruncnorm(
-    1,
-    a = -.99,
-    b = .99,
-    mean = theta$rho,
-    sd = sqrt(covariance[4, 4])
-  )
-  return(res)
-}
-
-densitySimpleIid <-
-  function(theta,
-           ancestor,
-           log = FALSE,
-           componentWise = FALSE,
-           covariance = diag(rep(1, 4))) {
-    require(truncnorm)
-    res <- list()
-    res$beta1 <-
-      dnorm(
-        theta$beta1,
-        mean = ancestor$beta1,
-        log = log,
-        sd = sqrt(covariance[1, 1])
-      )
-    res$beta2 <-
-      dnorm(
-        theta$beta2,
-        mean = ancestor$beta2,
-        log = log,
-        sd = sqrt(covariance[2, 2])
-      )
-    res$delta <-
-      dtruncnorm(
-        theta$delta,
-        a = 0,
-        mean = ancestor$delta,
-        sd = sqrt(covariance[3, 3])
-      )
-    if (log) {
-      res$delta <- log(res$delta)
-    }
-    res$rho <- dtruncnorm(
-      theta$rho,
-      a = -.99,
-      b = .99,
-      mean = ancestor$rho,
-      sd = sqrt(covariance[4, 4])
-    )
-    if (log) {
-      res$rho <- log(res$rho)
-    }
-    if (!componentWise) {
-      if (log) {
-        res <- sum(do.call(c, res))
-      } else{
-        res <- prod(do.call(c, res))
-      }
-    }
-    return(res)
-  }
-
-genNewProposalSimpleIid <-
-  function(theta,
-           log = FALSE,
-           componentWise = FALSE,
-           covariance = diag(rep(1, 4))) {
-    res <- list()
-    res$value <- genSimpleIid(theta, covariance)
-    res$density <-
-      densitySimpleIid(res$value, theta, log, componentWise, covariance)
-    res$densityInv <-
-      densitySimpleIid(theta, res$value, log, componentWise, covariance)
-    return(res)
-  }
-
-### Proposal independante non autocorrelee
-
-# genSimpleIidIndep <- function(theta) {
-#   require(truncnorm)
-#   res <- list()
-#   res$beta1 <- rnorm(1, mean = 0)
-#   res$beta2 <- rnorm(1, mean = 0)
-#   res$delta <- rtruncnorm(1, a = 0, mean = 0)
-#   res$rho <- rtruncnorm(1,
-#                         a = -.99,
-#                         b = .99,
-#                         mean = 0)
-#   return(res)
-# }
-#
-# densitySimpleIidIndep <- function(theta, log = FALSE) {
-#   require(truncnorm)
-#   res <- list()
-#   res$beta1 <- dnorm(theta$beta1, mean = 0, log = log)
-#   res$beta2 <- dnorm(theta$beta2, mean = 0, log = log)
-#   res$delta <-
-#     dtruncnorm(theta$delta, a = 0, mean = 0)
-#   if (log) {
-#     res$delta <- log(res$delta)
-#   }
-#   res$rho <- dtruncnorm(theta$rho,
-#                         a = -.99,
-#                         b = .99,
-#                         mean = 0)
-#   if (log) {
-#     res$rho <- log(res$rho)
-#   }
-#   return(res)
-# }
-#
-# genNewProposalSimpleIidIndep <- function(theta) {
-#   res <- list()
-#   res$value <- genSimpleIidIndep(theta)
-#   res$density <- densitySimpleIidIndep(res$value)
-#   res$densityInv <- densitySimpleIidIndep(theta)
-#   return(res)
-# }
-
-# genThetaPosterior <-
-#   function(theta0,
-#            d,
-#            Y,
-#            N,
-#            nb,
-#            estimateLikelihood = likelihoodBootstrapParticleFilter,
-#            log = FALSE,
-#            algoResample = noResampling,
-#            genNewProposal = genNewProposalSimpleIid,
-#            exportProba = FALSE) {
-#     res <- list()
-#     start <- getStart()
-#     logStart("Generation d'un echantillon PMCMC de theta")
-#     pct <- nb %/% 10
-#     thetaNameList <- getThetaNameList()
-#     theta <- theta0
-#     thetaLkh <-
-#       estimateLikelihood(d, theta, Y, N, log, algoResample)
-#     for (i in 1:nb) {
-#       proposal <- genNewProposal(theta)
-#       for (name in thetaNameList) {
-#         newTheta <- theta
-#         newTheta[[name]] <- proposal$value[[name]]
-#         newThetaLkh <-
-#           estimateLikelihood(d, newTheta, Y, N, log, algoResample)
-#         lkhRatio <-
-#           (newThetaLkh * proposal$densityInv[[name]] / (thetaLkh * proposal$density[[name]]))
-#         proba <- min(lkhRatio, 1)
-#         # print(proba)
-#         if (rbinom(1, 1, proba) == 1) {
-#           theta <- newTheta
-#           thetaLkh <- newThetaLkh
-#         }
-#       }
-#       res[[i]] <- theta
-#       if (i %% pct == 0) {
-#         logWithTime(start, paste((i / pct) * 10, "% généré", sep = ""))
-#       }
-#     }
-#     logTotalTime(start)
-#     return(res)
-#   }
-
 genThetaPosterior <-
-  function(theta0,
-           d,
-           Y,
-           N,
-           nb,
-           estimateLikelihood = likelihoodBootstrapParticleFilter,
-           log = FALSE,
-           algoResample = noResampling,
-           genNewProposal = genNewProposalSimpleIid,
-           componentWise = FALSE,
-           exportProba = FALSE,
-           covariance = diag(rep(1, 4))) {
-    res <- list()
-    start <- getStart()
-    logStart("Generation d'un echantillon PMCMC de theta")
-    pct <- nb %/% 10
-    thetaNameList <- getThetaNameList()
-    theta <- theta0
-    thetaLkh <-
-      estimateLikelihood(d, theta, Y, N, log, algoResample)
-    for (i in 1:nb) {
-      updateTheta <-
-        updateMCMC(
-          theta,
-          thetaLkh,
-          d,
-          Y,
-          N,
-          estimateLikelihood,
-          log,
-          algoResample,
-          genNewProposal,
-          componentWise,
-          covariance
-        )
-      theta <- updateTheta$theta
-      thetaLkh <- updateTheta$thetaLkh
-      res[[i]] <- theta
-      if (exportProba) {
-        res[[i]]$proba <- updateTheta$proba
-      }
-      if (i %% pct == 0) {
-        logWithTime(start, paste((i / pct) * 10, "% généré", sep = ""))
-      }
-    }
-    logTotalTime(start)
-    return(res)
-  }
-
-updateMCMC <- function(theta,
-                       thetaLkh,
-                       d,
-                       Y,
-                       N,
-                       estimateLikelihood = likelihoodBootstrapParticleFilter,
-                       log,
-                       algoResample,
-                       genNewProposal,
-                       componentWise,
-                       covariance) {
-  res <- list(theta = theta,
-              thetaLkh = thetaLkh,
-              proba = c())
-  proposal <- genNewProposal(theta, log, componentWise, covariance)
-  if (componentWise) {
-    for (name in getThetaNameList()) {
-      newTheta <- theta
-      newTheta[[name]] <- proposal$value[[name]]
-      newThetaLkh <-
-        estimateLikelihood(d, newTheta, Y, N, log, algoResample)
-      if (log) {
-        lkhRatio <-
-          exp(newThetaLkh + proposal$densityInv[[name]] - thetaLkh - proposal$density[[name]])
-      } else{
-        lkhRatio <-
-          (newThetaLkh * proposal$densityInv[[name]] / (thetaLkh * proposal$density[[name]]))
-      }
-      proba <- min(lkhRatio, 1)
-      res$proba <- append(res$proba, proba)
-      if (rbinom(1, 1, proba) == 1) {
-        res$theta <- newTheta
-        res$thetaLkh <- newThetaLkh
-      }
-    }
-  } else{
-    newTheta <- proposal$value
-    newThetaLkh <-
-      estimateLikelihood(d, newTheta, Y, N, log, algoResample)
-    if (log) {
-      lkhRatio <-
-        exp(newThetaLkh + proposal$densityInv - thetaLkh - proposal$density)
-    } else{
-      lkhRatio <-
-        (newThetaLkh * proposal$densityInv / (thetaLkh * proposal$density))
-    }
-    print(thetaLkh)
-    print(newThetaLkh)
-    print(proposal$density)
-    print(proposal$densityInv)
-    proba <- min(lkhRatio, 1)
-    res$proba <- proba
-    if (rbinom(1, 1, proba) == 1) {
-      res$theta <- newTheta
-      res$thetaLkh <- newThetaLkh
-    }
-  }
-  return(res)
-}
-
-formatResThetaPosterior <- function(rawRes, exportProba = FALSE) {
-  res <- list()
-  n <- length(rawRes)
-  thetaNameList <- getThetaNameList()
-  if (exportProba) {
-    thetaNameList <- append(thetaNameList, "proba")
-  }
-  for (name in thetaNameList) {
-    res[[name]] <- do.call(c, lapply(1:n, function(i) {
-      return(rawRes[[i]][[name]])
-    }))
-  }
-  return(res)
-}
-
-plotSimulResult <-
-  function(simulResult,
-           burnin,
-           pmcmcSize,
-           format = TRUE,
-           exportProba = FALSE) {
-    resultFormat <- simulResult
-    if (format) {
-      resultFormat <-
-        formatResThetaPosterior(resultFormat, exportProba = exportProba)
-    }
-    par(mfrow = c(2, 2))
-    for (param in getThetaNameList()) {
-      plot(
-        resultFormat[[param]][burnin:pmcmcSize],
-        type = "l",
-        main = param,
-        xlab = "Itération",
-        ylab = param
-      )
-    }
-    if (exportProba) {
-      for (i in 1:length(getThetaNameList())) {
-        param <- getThetaNameList()[i]
-        plot(
-          resultFormat$proba[i,][burnin:pmcmcSize],
-          type = "l",
-          main = param,
-          xlab = "Itération",
-          ylab = param
-        )
-      }
-    }
-    par(mfrow = c(1, 1))
-  }
-
-genThetaPosteriorNew <-
   function(theta0,
            d,
            Y,
@@ -754,6 +431,77 @@ genThetaPosteriorNew <-
     logTotalTime(start)
     return(res)
   }
+
+formatResThetaPosterior <- function(rawRes, exportProba = FALSE) {
+  res <- list()
+  n <- length(rawRes)
+  thetaNameList <- getThetaNameList()
+  if (exportProba) {
+    thetaNameList <- append(thetaNameList, "proba")
+  }
+  for (name in thetaNameList) {
+    res[[name]] <- do.call(c, lapply(1:n, function(i) {
+      return(rawRes[[i]][[name]])
+    }))
+  }
+  return(res)
+}
+
+plotSimulResult <-
+  function(simulResult,
+           burnin,
+           pmcmcSize,
+           format = TRUE,
+           exportProba = FALSE) {
+    resultFormat <- simulResult
+    if (format) {
+      resultFormat <-
+        formatResThetaPosterior(resultFormat, exportProba = exportProba)
+    }
+    par(mfrow = c(2, 2))
+    for (param in getThetaNameList()) {
+      plot(
+        resultFormat[[param]][burnin:pmcmcSize],
+        type = "l",
+        main = param,
+        xlab = "Itération",
+        ylab = param
+      )
+    }
+    if (exportProba) {
+      for (i in 1:length(getThetaNameList())) {
+        param <- getThetaNameList()[i]
+        plot(
+          resultFormat$proba[i,][burnin:pmcmcSize],
+          type = "l",
+          main = param,
+          xlab = "Itération",
+          ylab = param
+        )
+      }
+    }
+    par(mfrow = c(1, 1))
+  }
+
+printMeanAndVariance <- function(estim, burnin, pmcmcSize) {
+  require(mcmcse)
+  estimFormat <- formatResThetaPosterior(estim)
+  beta1 <- mcse(estimFormat$beta1[burnin:pmcmcSize], method = "bm")
+  beta2 <- mcse(estimFormat$beta2[burnin:pmcmcSize], method = "bm")
+  delta <- mcse(estimFormat$delta[burnin:pmcmcSize], method = "bm")
+  rho <- mcse(abs(estimFormat$rho[burnin:pmcmcSize]), method = "bm")
+  print(paste(
+    "Beta1 = ",
+    beta1,
+    " - Beta2 = ",
+    beta2,
+    " - Delta = ",
+    delta,
+    " - rho = ",
+    rho,
+    sep = ""
+  ))
+}
 
 ##################################################
 ##### SOLUTION DE L'ARTICLE

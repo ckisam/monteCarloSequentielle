@@ -166,19 +166,39 @@ if (drawOptimal) {
 drawXiMean <- FALSE
 
 if (drawXiMean) {
+  startUp <- list(
+    beta1 = 5,
+    beta2 = 5,
+    delta = 5,
+    rho = .2
+  )
+  startDown <- list(
+    beta1 = -5,
+    beta2 = -5,
+    delta = -5,
+    rho = .2
+  )
+  
+  thetaRef <- list(
+    beta1 = 0,
+    beta2 = 1,
+    delta = .1,
+    rho = .5
+  )
+  
   par(mfrow = c(2, 2))
-  for (i in c(10, 50, 100, 200)) {
+  for (nbPart in c(10, 50, 100, 200)) {
     particleList <- lapply(1:10, function(i) {
       res <-
         likelihoodBootstrapParticleFilter(d,
-                                          theta,
+                                          startUp,
                                           simulY,
-                                          100,
-                                          algoResample = residualResampling,
+                                          nbPart,
+                                          #algoResample = residualResampling,
                                           exportXi = TRUE)
     })
-    allData <- c(simulXi, do.call(c, lapply(1:10, function(j) {
-      return(particleList[[j]]$xi$mean)
+    allData <- c(simulXi, do.call(c, lapply(1:10, function(i) {
+      return(particleList[[i]]$xi$mean)
     })))
     yLim <- c(min(allData), max(allData))
     print(yLim)
@@ -202,119 +222,16 @@ if (drawXiMean) {
 ##################################################
 ##### ECHANTILLONNAGE DE THETA PAR PMCMC
 
-burnin <- 100
-pmcmcSize <- 200
-N <- 100
-covariance <- diag(c(.1, .1, .1, .1))
-
-simulThetaIid <-
-  genThetaPosterior(
-    theta,
-    d,
-    simulY,
-    N,
-    pmcmcSize,
-    componentWise = TRUE,
-    exportProba = TRUE,
-    covariance = covariance
-  )
-
-plotSimulResult(simulThetaIid, burnin, pmcmcSize, exportProba = TRUE)
-
-### Variance optimale
-
-# for (v in varianceList) {
-#   temp <-
-#     genThetaPosterior(
-#       theta,
-#       d,
-#       simulY,
-#       N,
-#       pmcmcSize,
-#       componentWise = TRUE,
-#       exportProba = TRUE,
-#       covariance = diag(c(v, rep(1, 3)))
-#     )
-#   temp <- formatResThetaPosterior(temp, exportProba = TRUE)
-#   monitorChain$corr <- append(monitorChain$corr,
-#                               acf(temp$beta1, lag.max = 1, plot = FALSE)[["acf"]][2, 1, 1])
-#   monitorChain$proba <-
-#     append(monitorChain$proba, mean(temp$proba[1,]))
-# }
-
-pmcmcSize <- 100
-N <- 10
-
-# varianceList <- 10 ^ (-6:6)
-varianceList <- c(.001, 1, 100)
-monitorChain <- list()
-
-for (i in 1:length(varianceList)) {
-  monitorChain[[i]] <- list()
-  for (j in 1:length(varianceList)) {
-    monitorChain[[i]][[j]] <- list()
-    for (k in 1:length(varianceList)) {
-      monitorChain[[i]][[j]][[k]] <- list()
-      for (l in 1:length(varianceList)) {
-        monitorChain[[i]][[j]][[k]][[l]] <- list()
-        covariance <- diag(c(
-          varianceList[i],
-          varianceList[j],
-          varianceList[k],
-          varianceList[l]
-        ))
-        temp <-
-          genThetaPosterior(
-            theta,
-            d,
-            simulY,
-            N,
-            pmcmcSize,
-            componentWise = TRUE,
-            exportProba = TRUE,
-            covariance = covariance
-          )
-        temp <- formatResThetaPosterior(temp, exportProba = TRUE)
-        for (param in getThetaNameList()) {
-          monitorChain[[i]][[j]][[k]][[l]]$corr[[param]] <-
-            acf(temp[[param]], lag.max = 1, plot = FALSE)[["acf"]][2, 1, 1]
-        }
-        monitorChain[[i]][[j]][[k]][[l]]$proba <-
-          append(monitorChain$proba, mean(temp$proba[1, ]))
-      }
-    }
-  }
-}
-
-maxProba <- list()
-for (i in 1:length(varianceList)) {
-  for (j in 1:length(varianceList)) {
-    for (k in 1:length(varianceList)) {
-      for (l in 1:length(varianceList)) {
-        if (monitorChain[[i]][[j]][[k]][[l]]$proba >= .2) {
-          maxProba[[length(maxProba) + 1]] <- c(i, j, k, l)
-        }
-      }
-    }
-  }
-}
-
-for(l in maxProba) {
-  print(l)
-  print(monitorChain[[l[1]]][[l[2]]][[l[3]]][[l[4]]]$proba)
-}
-
-
 startUp <- list(
-  beta1 = -5,
-  beta2 = -5,
-  delta = -5,
-  rho = .2
-)
-startDown <- list(
   beta1 = 5,
   beta2 = 5,
   delta = 5,
+  rho = .2
+)
+startDown <- list(
+  beta1 = -5,
+  beta2 = -5,
+  delta = -5,
   rho = .2
 )
 
@@ -330,21 +247,21 @@ pmcmcSize <- 3000
 N <- 100
 covariance <- diag(c(.1, .1, .1, .1))
 posteriorStartUpThetaRef <-
-  genThetaPosteriorNew(startUp,
-                       d,
-                       genPhotonCount(d, thetaRef, n)$y,
-                       N,
-                       pmcmcSize,
-                       covariance = covariance)
+  genThetaPosterior(startUp,
+                    d,
+                    genPhotonCount(d, thetaRef, n)$y,
+                    N,
+                    pmcmcSize,
+                    covariance = covariance)
 posteriorStartDownThetaRef <-
-  genThetaPosteriorNew(startDown,
-                       d,
-                       genPhotonCount(d, thetaRef, n)$y,
-                       N,
-                       pmcmcSize,
-                       covariance = covariance)
+  genThetaPosterior(startDown,
+                    d,
+                    genPhotonCount(d, thetaRef, n)$y,
+                    N,
+                    pmcmcSize,
+                    covariance = covariance)
 posteriorStartUpThetaRefCompWise <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     startUp,
     d,
     genPhotonCount(d, thetaRef, n)$y,
@@ -354,7 +271,7 @@ posteriorStartUpThetaRefCompWise <-
     covariance = covariance
   )
 posteriorStartDownThetaRefCompWise <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     startDown,
     d,
     genPhotonCount(d, thetaRef, n)$y,
@@ -364,7 +281,7 @@ posteriorStartDownThetaRefCompWise <-
     covariance = covariance
   )
 posteriorStartUpThetaRefResample <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     startUp,
     d,
     genPhotonCount(d, thetaRef, n)$y,
@@ -374,7 +291,7 @@ posteriorStartUpThetaRefResample <-
     covariance = covariance
   )
 posteriorStartDownThetaRefResample <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     startDown,
     d,
     genPhotonCount(d, thetaRef, n)$y,
@@ -384,7 +301,7 @@ posteriorStartDownThetaRefResample <-
     covariance = covariance
   )
 posteriorStartUpThetaRefCompWiseResample <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     startUp,
     d,
     genPhotonCount(d, thetaRef, n)$y,
@@ -395,7 +312,7 @@ posteriorStartUpThetaRefCompWiseResample <-
     covariance = covariance
   )
 posteriorStartDownThetaRefCompWiseResample <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     startDown,
     d,
     genPhotonCount(d, thetaRef, n)$y,
@@ -407,110 +324,42 @@ posteriorStartDownThetaRefCompWiseResample <-
   )
 plotSimulResult(posteriorStartUpThetaRef, 1, pmcmcSize) # OK - 2m10
 plotSimulResult(posteriorStartDownThetaRef, 1, pmcmcSize) # OK - 2m10
-plotSimulResult(posteriorStartUpThetaRefCompWise, 1, pmcmcSize) # OK - 9 min
-plotSimulResult(posteriorStartDownThetaRefCompWise, 1, pmcmcSize) # OK - 10 min
-plotSimulResult(posteriorStartUpThetaRefResample, 1, pmcmcSize) # OK - 1m40
-plotSimulResult(posteriorStartDownThetaRefResample, 1, pmcmcSize) # Pb
-plotSimulResult(posteriorStartUpThetaRefCompWiseResample, 1, pmcmcSize) # OK - 12 min
-plotSimulResult(posteriorStartDownThetaRefCompWiseResample, 1, pmcmcSize) # Pb
+plotSimulResult(posteriorStartUpThetaRefCompWise, 1, pmcmcSize) # OK - 10 min
+plotSimulResult(posteriorStartDownThetaRefCompWise, 1, pmcmcSize) # OK - 9 min
+plotSimulResult(posteriorStartUpThetaRefResample, 1, pmcmcSize) # Pb
+plotSimulResult(posteriorStartDownThetaRefResample, 1, pmcmcSize) # OK - 1m40
+plotSimulResult(posteriorStartUpThetaRefCompWiseResample, 1, pmcmcSize) # Pb
+plotSimulResult(posteriorStartDownThetaRefCompWiseResample, 1, pmcmcSize) # OK - 12 min
 
-printEstim <- function(estim) {
-  estimFormat <- formatResThetaPosterior(estim)
-  beta1 <- mean(estimFormat$beta1[2000:3000])
-  beta2 <- mean(estimFormat$beta2[2000:3000])
-  delta <- mean(estimFormat$delta[2000:3000])
-  rho <- mean(abs(estimFormat$rho[2000:3000]))
-  print(paste(
-    "Beta1 = ",
-    beta1,
-    " - Beta2 = ",
-    beta2,
-    " - Delta = ",
-    delta,
-    " - rho = ",
-    rho,
-    sep = ""
-  ))
-}
-
-printEstim(posteriorStartUpThetaRef)
-# [1] "Beta1 = -0.0829228027374298 - Beta2 = 1.08849766505897
-# - Delta = 0.0586912867078934 - rho = 0.502502020583862"
-printEstim(posteriorStartDownThetaRef)
-# [1] "Beta1 = -0.0133024577986279 - Beta2 = 0.979937043440443
-# - Delta = 0.0707748225827671 - rho = 0.273032101731567"
-printEstim(posteriorStartUpThetaRefCompWise)
-# [1] "Beta1 = 0.0161758936613691 - Beta2 = 0.950449829870693
-# - Delta = -0.00662497180056832 - rho = 0.470665739825585"
-printEstim(posteriorStartDownThetaRefCompWise)
-# [1] "Beta1 = -0.0703026604734542 - Beta2 = 1.03301050083062
-# - Delta = -0.00619558098948477 - rho = 0.424406085628546"
-printEstim(posteriorStartUpThetaRefResample)
-# [1] "Beta1 = -5.7932618573769 - Beta2 = -3.65355548226205
-# - Delta = -0.432720031410151 - rho = 0.986923146205778"
-printEstim(posteriorStartUpThetaRefCompWiseResample)
-# [1] "Beta1 = -0.15348644005593 - Beta2 = 1.3121308928661
-# - Delta = -0.0151397782887926 - rho = 0.661796838760115"
-
-printVariance <- function(estim) {
-  require(mcmcse)
-  estimFormat <- formatResThetaPosterior(estim)
-  beta1 <- mcse(estimFormat$beta1[2000:3000], method = "bm")
-  beta2 <- mcse(estimFormat$beta2[2000:3000], method = "bm")
-  delta <- mcse(estimFormat$delta[2000:3000], method = "bm")
-  rho <- mcse(abs(estimFormat$rho[2000:3000]), method = "bm")
-  print(paste(
-    "Beta1 = ",
-    beta1,
-    " - Beta2 = ",
-    beta2,
-    " - Delta = ",
-    delta,
-    " - rho = ",
-    rho,
-    sep = ""
-  ))
-}
-
-printVariance(posteriorStartUpThetaRef)
+printMeanAndVariance(posteriorStartDownThetaRef,2000,3000)
 # [1] "Beta1 = -0.0829228027374298 - Beta2 = 1.08849766505897
 # - Delta = 0.0586912867078934 - rho = 0.502502020583862"  
 # [2] "Beta1 = 0.00910785328294363 - Beta2 = 0.0189724875220476
 # - Delta = 0.012629811066568 - rho = 0.0341755192059229"
-printVariance(posteriorStartDownThetaRef)
+printMeanAndVariance(posteriorStartUpThetaRef,2000,3000)
 # [1] "Beta1 = -0.0133024577986279 - Beta2 = 0.979937043440443
 # - Delta = 0.0707748225827671 - rho = 0.273032101731567"  
 # [2] "Beta1 = 0.00617256602560364 - Beta2 = 0.0140999154410152
 # - Delta = 0.0129860162379289 - rho = 0.0460113249783819"
-printVariance(posteriorStartUpThetaRefCompWise)
+printMeanAndVariance(posteriorStartDownThetaRefCompWise,2000,3000)
 # [1] "Beta1 = 0.0161758936613691 - Beta2 = 0.950449829870693
 # - Delta = -0.00662497180056832 - rho = 0.470665739825585" 
 # [2] "Beta1 = 0.00939046606511996 - Beta2 = 0.0132710094463102
 # - Delta = 0.0188409659562685 - rho = 0.0359275625267412"
-printVariance(posteriorStartDownThetaRefCompWise)
+printMeanAndVariance(posteriorStartUpThetaRefCompWise,2000,3000)
 # [1] "Beta1 = -0.0703026604734542 - Beta2 = 1.03301050083062
 # - Delta = -0.00619558098948477 - rho = 0.424406085628546"
 # [2] "Beta1 = 0.0122634131617299 - Beta2 = 0.0198791181570819
 # - Delta = 0.0154969563142585 - rho = 0.0356930053594359"
-printVariance(posteriorStartUpThetaRefResample)
+printMeanAndVariance(posteriorStartDownThetaRefResample,2000,3000)
 # [1] "Beta1 = -5.7932618573769 - Beta2 = -3.65355548226205
 # - Delta = -0.432720031410151 - rho = 0.986923146205778"
 # [2] "Beta1 = 0 - Beta2 = 0 - Delta = 0 - rho = 0"      
-printVariance(posteriorStartUpThetaRefCompWiseResample)
+printMeanAndVariance(posteriorStartDownThetaRefCompWiseResample,2000,3000)
 # [1] "Beta1 = -0.15348644005593 - Beta2 = 1.3121308928661
 # - Delta = -0.0151397782887926 - rho = 0.661796838760115"     
 # [2] "Beta1 = 0.0151891523734407 - Beta2 = 0.0238601777355272
 # - Delta = 0.00571777566039334 - rho = 0.0276327499033897"
-
-# computeBatchMeanVariance <- function(simul, a, b, totalSize){
-#   start <- totalSize-a*b
-#   interest <- simul[(totalSize-a*b+1):totalSize]
-#   mean <- 
-#   res <- 0
-#   for(i in 1:a){
-#     res <- res+
-#   }
-# }
 
 # Nombre de particules
 genBeta1Move <- function(N) {
@@ -537,7 +386,7 @@ pmcmcSize <- 300
 N <- 100
 covariance <- diag(c(1?1,1,1))
 testAVirer <-
-  genThetaPosteriorNew(
+  genThetaPosterior(
     # list(
     #   beta1 = -5,
     #   beta2 = -5,
